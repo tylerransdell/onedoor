@@ -1,6 +1,6 @@
 server:
-  listen_port: 8099 #default matches docker compose point reverse proxy to port referencing this.
-  token_expiry_days: 30
+  listen_port: 8099 #generally dont change this, you can change port in compose.
+  token_expiry_days: 30 #login token good this long
 # depricated  jwt_secret: moved to env var in compose.
 
 video:

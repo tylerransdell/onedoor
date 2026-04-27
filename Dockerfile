@@ -7,5 +7,5 @@ RUN npm install --omit=dev
 
 COPY . .
 
-EXPOSE 8080
+EXPOSE 8099
 CMD ["node", "server.js"]
