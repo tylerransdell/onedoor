@@ -32,6 +32,7 @@ OneDoor is built with a **PBX-first** philosophy. It provides ultra low latency,
 1. **Deployment:**
    Copy `docker-compose.yml`, fill `JWT_SECRET` (32+ chars).
    Run: `docker compose up -d`
+   If I still don't have docker repo up, clone and run 'docker compose up -d --build'
 
 2. **Generate Password:**
    Run: `docker exec -it onedoor node -e "console.log(require('bcryptjs').hashSync('YOUR_PASSWORD', 10))"`
