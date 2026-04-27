@@ -1,0 +1,24 @@
+services:
+  intercom-backend:
+    build: .          # dev only, delete this for release pulls.
+    container_name: onedoor
+    ports:
+      - 8099:8099   #first number is port you expose to nginx. second is server inside container.
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro #server config
+      - ./logs:/var/log/intercom:rw #optional
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET= #any string at least 32 chars
+    restart: unless-stopped
+
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: go2rtc
+    ports:
+      - 1984:1984 #console 
+      - 8557:8557/tcp #webrtc port
+      - 8557:8557/udp #webrtc port
+    volumes:
+      - ./go2rtc.yaml:/config/go2rtc.yaml:ro  #go2rtc config
+    restart: unless-stopped

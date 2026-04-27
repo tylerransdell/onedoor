@@ -1,0 +1,42 @@
+server:
+  listen_port: 8099 #default matches docker compose point reverse proxy to port referencing this.
+  token_expiry_days: 30
+# depricated  jwt_secret: moved to env var in compose.
+
+video:
+  rtsp_url: "rtsp://192.168.1.31:8554/frontsubsmall" #local video path reference
+  webrtc_port: 8557 #must match go2rtc.yaml and docker-compose.yml
+  webrtc_name: "frontsubsmall" #must match stream from go2rtc.yaml
+
+pbx:
+  host: "192.168.1.26" #your asterisk location
+  ws_port: 8088 #websocket port for your pbx
+  dial_extension: "102" #pbx extension that call button calls, can be your intercom or a conference room with group logic.
+  user_agent: "asterisk" #required form some pbx, makes integration easy.
+
+users:
+  - username: "firstuser" #login to onedoor
+    password_hash: "$longtok..." #see makepass.example this password to onedoor
+    pbx_username: "user1" #pbx credential
+    pbx_password: "useronepass" #pbx credential
+  - username: "seconduser"
+    password_hash: "$2a$10$..."
+    pbx_username: "user2"
+    pbx_password: "usertwopass"
+
+fail2ban:
+  enabled: true
+  log_path: "/var/log/intercom/auth.log"
+
+# config.yaml (Add this section)
+actions:
+  - id: "light_01"
+    label: "Illuminator"
+    type: "hook"
+    icon: "💡"
+    url: "http://192.168.1.50/api/relay/on" 
+  - id: "door_01"
+    label: "Unlock"
+    type: "dtmf"
+    icon: "🔓"
+    payload: "1"

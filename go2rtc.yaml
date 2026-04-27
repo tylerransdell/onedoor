@@ -1,0 +1,14 @@
+streams:
+  frontsubsmall: rtsp://192.168.1.31:8554/frontsubsmall #name must match config.yaml, address is local address of your camera stream
+
+webrtc:
+  listen: :8557 #webrtc port must match docker-compose.yml and config.yaml
+  candidates:
+    - door.your domain.com:8557 #candidates tell client where to find webrtc tunnel, must have port forwarded on router.
+#    - 192.168.1.26:8557 local server port optional edge may complain about security.
+#    -stun:8557 optional
+  ice_lite: false #apple doesnt seem to like this one so default false.
+
+rtsp:
+  backchannel: true #these settings help speed up rtsp, optional.
+  timeout: 5s

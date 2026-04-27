@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>OneDoor</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icons/icon-180.png">
+    
+    <script src="/jssip.min.js"></script>
+    
+    <style>
+        :root { --bg: #000; --panel: #1a1a1a; --green: #22c55e; --red: #ef4444; --text: #fff; --blue: #3b82f6; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background: var(--bg); color: var(--text); 
+            height: 100dvh; display: flex; flex-direction: column; overflow: hidden; 
+        }
+        #video-container { 
+            flex: 1; position: relative; background: #000; 
+            display: flex; align-items: center; justify-content: center; overflow: hidden; 
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        #login { 
+            position: absolute; inset: 0; background: rgba(0,0,0,0.95); 
+            z-index: 100; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; padding: 24px; 
+        }
+        form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
+        input { 
+            width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; 
+            background: #111; color: #fff; font-size: 16px; outline: none; 
+        }
+        .hidden { display: none !important; }
+        
+        #controls { 
+            display: none; 
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            gap: 8px; 
+            padding: 12px; 
+            background: var(--panel); 
+            padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        }
+        button { 
+            padding: 16px 8px; border-radius: 12px; border: none; 
+            font-weight: 600; font-size: 14px; cursor: pointer; 
+            color: #fff; white-space: nowrap; overflow: hidden; 
+        }
+        .btn-call { background: var(--green); }
+        .btn-hangup { background: var(--red); display: none; }
+        .btn-action { background: #333; border: 1px solid #444; }
+        
+        #status { 
+            position: absolute; top: 12px; left: 12px; font-size: 10px; 
+            font-weight: bold; background: rgba(0,0,0,0.7); 
+            padding: 4px 8px; border-radius: 4px; z-index: 50; 
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+
+<div id="status">OFFLINE</div>
+
+<div id="video-container">
+    <video id="video" autoplay playsinline muted></video>
+    <audio id="remoteAudio" autoplay></audio>
+
+    <div id="login">
+        <h2 style="margin-bottom:20px; letter-spacing: -1px;">OneDoor</h2>
+        <form id="login-form" onsubmit="doLogin(event)">
+            <input type="text" id="username" placeholder="Username" autocomplete="username" required>
+            <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+            <button type="submit" style="background:#fff; color:#000; margin-top:10px">Sign In</button>
+        </form>
+    </div>
+</div>
+
+<div id="controls"></div>
+
+<script>
+let ua, session, pc, configData;
+const API = window.location.origin;
+const $ = id => document.getElementById(id);
+const setStatus = t => { $('status').textContent = t.toUpperCase(); };
+
+// --- 1. VIDEO LOGIC ---
+async function loadWebRTC(name) {
+    setStatus('NEGOTIATING...');
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    pc.ontrack = e => { if (e.streams[0]) { $('video').srcObject = e.streams[0]; setStatus('LIVE'); } };
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    try {
+        const res = await fetch(`${API}/go2rtc/api/webrtc?src=${encodeURIComponent(name)}`, {
+            method: 'POST',
+            body: pc.localDescription.sdp
+        });
+        const answer = await res.text();
+        await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+    } catch (e) { setStatus('VIDEO ERROR'); }
+}
+
+// --- 2. SIP LOGIC ---
+function setupSIP() {
+    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new JsSIP.WebSocketInterface(`${wsProto}//${location.host}/asterisk-ws`);
+
+    ua = new JsSIP.UA({
+        sockets: [socket],
+        uri: `sip:${configData.pbx.username}@${location.hostname}`,
+        password: configData.pbx.password,
+        register: true,
+        session_timers: false,
+        user_agent: configData.pbx.user_agent
+    });
+
+    ua.on('registered', () => setStatus('READY'));
+    ua.on('newRTCSession', e => { 
+        session = e.session; 
+        handleSession(); 
+    });
+    ua.start();
+}
+
+function handleSession() {
+    session.on('peerconnection', d => {
+        d.peerconnection.ontrack = e => { if (e.kind === 'audio') $('remoteAudio').srcObject = e.streams[0]; };
+    });
+    session.on('confirmed', () => {
+        $('callBtn').style.display = 'none';
+        $('hangupBtn').style.display = 'block';
+        setStatus('IN CALL');
+    });
+    session.on('ended', resetUI);
+    session.on('failed', resetUI);
+}
+
+function startCall() {
+    ua.call(`sip:${configData.pbx.dial_extension}@${location.hostname}`, {
+        mediaConstraints: { audio: true, video: false }
+    });
+}
+
+function hangup() { session?.terminate(); }
+function resetUI() {
+    $('callBtn').style.display = 'block';
+    $('hangupBtn').style.display = 'none';
+    setStatus('READY');
+}
+
+// --- 3. ACTION LOGIC ---
+async function runAction(action) {
+    if (action.type === 'dtmf') {
+        if (session) {
+            session.sendDTMF(action.payload);
+            setStatus(`SENT: ${action.payload}`);
+        } else {
+            alert("No active call for DTMF");
+        }
+    } else if (action.type === 'hook') {
+        setStatus('SENDING...');
+        const res = await fetch(`${API}/api/action`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${configData.token}`
+            },
+            body: JSON.stringify({ actionId: action.id })
+        });
+        if (res.ok) setStatus('SUCCESS');
+    }
+    setTimeout(() => setStatus(session?.isEstablished() ? 'IN CALL' : 'READY'), 2000);
+}
+
+// --- 4. APP FLOW ---
+function initApp() {
+    $('login').classList.add('hidden');
+    const ctrl = $('controls');
+    ctrl.style.display = 'grid';
+    ctrl.innerHTML = '';
+
+    // Call Button
+    const callBtn = document.createElement('button');
+    callBtn.id = 'callBtn';
+    callBtn.className = 'btn-call';
+    callBtn.innerHTML = '📞 CALL';
+    callBtn.onclick = startCall;
+    ctrl.appendChild(callBtn);
+
+    // Configured Actions (Max 2)
+    configData.actions.forEach(action => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-action';
+        btn.innerHTML = `${action.icon} ${action.label}`;
+        btn.onclick = () => runAction(action);
+        ctrl.appendChild(btn);
+    });
+
+    // Hangup Button
+    const hangBtn = document.createElement('button');
+    hangBtn.id = 'hangupBtn';
+    hangBtn.className = 'btn-hangup';
+    hangBtn.innerHTML = '📴 END';
+    hangBtn.onclick = hangup;
+    ctrl.appendChild(hangBtn);
+
+    loadWebRTC(configData.video.name);
+    setupSIP();
+}
+
+async function doLogin(event) {
+    event.preventDefault();
+    const u = $('username').value, p = $('password').value;
+    try {
+        const res = await fetch(`${API}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, password: p })
+        });
+        if (!res.ok) throw new Error('Auth Failed');
+        configData = await res.json();
+        localStorage.setItem('jwt', configData.token);
+        initApp();
+    } catch (e) { alert(e.message); }
+}
+
+window.onload = () => {
+    const token = localStorage.getItem('jwt');
+    if (token) {
+        fetch(`${API}/api/verify`, { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(res => res.json())
+        .then(data => { 
+            if (data.valid) { 
+                configData = data; 
+                configData.token = token; 
+                initApp(); 
+            } 
+        }).catch(() => localStorage.removeItem('jwt'));
+    }
+};
+</script>
+</body>
+</html>
