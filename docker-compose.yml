@@ -1,6 +1,7 @@
 services:
   intercom-backend:
-    build: .          # dev only, delete this for release pulls.
+    build: .          # still needed until docker repo is built.
+#    image: tylerransdell/onedoor:latest  --- not ready yet, must build
     container_name: onedoor
     ports:
       - 8099:8099   #first number is port you expose to nginx. second is server inside container.
@@ -15,10 +16,14 @@ services:
   go2rtc:
     image: alexxit/go2rtc:latest
     container_name: go2rtc
+#    devices:
+#      - /dev/dri:/dev/dri  --- use hardware acceleration if transposing landscape camera
     ports:
       - 1984:1984 #console 
       - 8557:8557/tcp #webrtc port
       - 8557:8557/udp #webrtc port
     volumes:
       - ./go2rtc.yaml:/config/go2rtc.yaml:ro  #go2rtc config
+#    environment:
+#      - LIBVA_DRIVER_NAME=iHD -- might be required for intel hardware acceleration if transpose landscape
     restart: unless-stopped
