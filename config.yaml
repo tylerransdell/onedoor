@@ -28,13 +28,12 @@ fail2ban:
   enabled: true
   log_path: "/var/log/intercom/auth.log"
 
-# config.yaml (Add this section)
 actions:
-  - id: "light_01"
-    label: "Illuminator"
-    type: "hook"
-    icon: "💡"
-    url: "http://192.168.1.50/api/relay/on" 
+  - id: "light_01" #placeholder
+    label: "Illuminator" #this shows up on button. keep it short if 3 buttons.
+    type: "hook" #"hook" for webhook, "dtmf" for sip command. 
+    icon: "💡" #this also shows up on button.
+    url: "http://192.168.1.50/api/relay/on" #url for webhooks, payloads for dtmf
   - id: "door_01"
     label: "Unlock"
     type: "dtmf"
