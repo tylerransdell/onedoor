@@ -4,6 +4,8 @@ Thank you for checking out **OneDoor**. This is a hyper-focused SPA/PWA phone ap
 
 OneDoor is built with a **PBX-first** philosophy. It provides ultra low latency, full duplex audio through a dedicated SIP stack, paired with a high-performance video stream that doesn't hold back the audio.
 
+It’s the perfect app to point your door notifications to. Tap the alert and you’re instantly at the door with near‑zero delay and full control.
+
 ## 📸 Interface Preview
 
 | Mobile PWA View | Desktop Widget View |
@@ -48,10 +50,9 @@ OneDoor is built with a **PBX-first** philosophy. It provides ultra low latency,
 
 ## 🗺 Roadmap
 
-* Non-PBX Mode: Support for users without a PBX who want 3x actions.
-* Horizontal View: Optimized for landscape devices, use go2rtc's ffmpeg for now.
+* Non-PBX Mode: Support for users without PBX. Investigate go2rtc behavior for speed.
+* Landscape View: go2rtc's ffmpeg for now. Optimize later.
 * Better Logging: Audit trails and hardware acceleration indicators.
-* Privacy: Explore configurable way for client to enforce SRTP.
 
 ## Updates
 * Day one Pre Release had an unauthentaced privacy concern. Please sync updates.
