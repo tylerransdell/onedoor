@@ -130,9 +130,8 @@ async function loadWebRTC(name) {
 
 // --- 2. SIP LOGIC ---
 function setupSIP() {
-    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // This /asterisk-ws path must be proxied in Nginx to your PBX
-    const socket = new JsSIP.WebSocketInterface(`${wsProto}//${location.host}/asterisk-ws`);
+    // Hard-coded to wss: to ensure encrypted signaling is always enforced
+    const socket = new JsSIP.WebSocketInterface(`wss://${location.host}/asterisk-ws`);
 
     ua = new JsSIP.UA({
         sockets: [socket],
@@ -153,7 +152,12 @@ function setupSIP() {
 
 function handleSession() {
     session.on('peerconnection', d => {
-        d.peerconnection.ontrack = e => { if (e.kind === 'audio') $('remoteAudio').srcObject = e.streams[0]; };
+        d.peerconnection.ontrack = e => { 
+            // Precision fix: modern browsers look for e.track.kind
+            if (e.track.kind === 'audio') {
+                $('remoteAudio').srcObject = e.streams[0];
+            }
+        };
     });
     session.on('confirmed', () => {
         $('callBtn').style.display = 'none';
@@ -165,9 +169,13 @@ function handleSession() {
 }
 
 function startCall() {
-    ua.call(`sip:${configData.pbx.dial_extension}@${location.hostname}`, {
-        mediaConstraints: { audio: true, video: false }
-    });
+    const options = {
+        mediaConstraints: { audio: true, video: false },
+        pcConfig: {
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        }
+    };
+    ua.call(`sip:${configData.pbx.dial_extension}@${location.hostname}`, options);
 }
 
 function hangup() { session?.terminate(); }

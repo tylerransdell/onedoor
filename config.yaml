@@ -1,14 +1,13 @@
 server:
-  listen_port: 8099 #generally dont change this, you can change port in compose.
-  token_expiry_days: 30 #login token good this long
-# depricated  jwt_secret: moved to env var in compose.
+  listen_port: 8099 #generally dont change this, change port in compose if required.
+  token_expiry_days: 30
 
 video:
   webrtc_name: "frontsubsmall" #must match stream from go2rtc.yaml
 
 pbx:
-  dial_extension: "102" #pbx extension that call button calls, can be your intercom or a conference room with group logic.
-  user_agent: "asterisk" #required form some pbx, makes integration easy.
+  dial_extension: "102" #pbx extension that call button calls
+  user_agent: "OneDoor - Client"
 
 users:
   - username: "firstuser" #login to onedoor

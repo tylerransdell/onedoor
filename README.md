@@ -55,3 +55,4 @@ OneDoor is built with a **PBX-first** philosophy. It provides ultra low latency,
 
 ## Updates
 * Day one Pre Release had an unauthentaced privacy concern. Please sync updates.
+* Day two small updates with docs and some TLS and  DTLS-SRTP hardening.

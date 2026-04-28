@@ -17,8 +17,8 @@ services:
     container_name: go2rtc
 #    devices:
 #      - /dev/dri:/dev/dri  --- use hardware acceleration if transposing landscape camera
-    ports: #only the webrtc port. matching listen on config. port 1984 is internal to the dockernet only
-      - 8557:8557/tcp #webrtc port
+    ports:
+      - 8557:8557/tcp #webrtc port, OneDoor to go2rtc tcp is handled in dockernet
       - 8557:8557/udp #webrtc port
     volumes:
       - ./go2rtc.yaml:/config/go2rtc.yaml:ro  #go2rtc config
