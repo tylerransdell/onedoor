@@ -55,6 +55,8 @@ It’s the perfect ap (or dashboard) to point your Home Assistant door notificat
 * Better Logging: Audit trails and hardware acceleration indicators.
 
 ## Updates
-* Day one: Pre Release had an unauthentaced privacy concern fix. Please sync updates.
+* Day one: pre release had an unauthentaced privacy concern fix. Please sync updates.
 * Day two: small updates with docs and some TLS and DTLS-SRTP hardening.
-* Non-PBX feature research: Performance may not meet the OneDoor standard.
+* Non-PBX feature research: performance may not meet the OneDoor standard.
+* No plans for: multiple doors, logout feature that  detracts from UI.
+* May consider: powerful actions with feedback, tighter integration w/ pbx, go2rtc, nginx.
