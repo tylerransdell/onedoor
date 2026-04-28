@@ -1,3 +1,4 @@
+#DAY ONE WARNING this project is exposing a websocket right to unauthenticated video. Privacy concern. Day one release will be fixed ASAP.
 # OneDoor 🚪 (Build 011- Pre Release)
 
 Thank you for checking out **OneDoor**. This is a hyper-focused SPA/PWA phone app and desktop widget (frontend + backend) focusing on being the best single door app on earth.
