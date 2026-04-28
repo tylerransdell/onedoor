@@ -1,15 +1,14 @@
 services:
-  intercom-backend:
+  onedoor:
     build: .          # still needed until docker repo is built.
 #    image: tylerransdell/onedoor:latest  --- not ready yet, must build
     container_name: onedoor
     ports:
-      - 8099:8099   #first number is port you expose to nginx. second is server inside container.
+      - "8099:8099"   #first number is port you expose to nginx. second is server inside container and should stay 8099.
     volumes:
       - ./config.yaml:/app/config.yaml:ro #server config
       - ./logs:/var/log/intercom:rw #optional
     environment:
-      - NODE_ENV=production
       - JWT_SECRET= #any string at least 32 chars
     restart: unless-stopped
 
@@ -18,8 +17,7 @@ services:
     container_name: go2rtc
 #    devices:
 #      - /dev/dri:/dev/dri  --- use hardware acceleration if transposing landscape camera
-    ports:
-      - 1984:1984 #console 
+    ports: #only the webrtc port. matching listen on config. port 1984 is internal to the dockernet only
       - 8557:8557/tcp #webrtc port
       - 8557:8557/udp #webrtc port
     volumes:

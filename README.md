@@ -1,4 +1,3 @@
-#DAY ONE WARNING this project is exposing a websocket right to unauthenticated video. Privacy concern. Day one release will be fixed ASAP.
 # OneDoor 🚪 (Build 011- Pre Release)
 
 Thank you for checking out **OneDoor**. This is a hyper-focused SPA/PWA phone app and desktop widget (frontend + backend) focusing on being the best single door app on earth.
@@ -53,3 +52,6 @@ OneDoor is built with a **PBX-first** philosophy. It provides ultra low latency,
 * Horizontal View: Optimized for landscape devices, use go2rtc's ffmpeg for now.
 * Better Logging: Audit trails and hardware acceleration indicators.
 * Privacy: Explore configurable way for client to enforce SRTP.
+
+## Updates
+* Day one Pre Release had an unauthentaced privacy concern. Please sync updates.

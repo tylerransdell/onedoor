@@ -3,6 +3,8 @@
 #SSL tab must have SSL enforced, HTTP/2 and HSTS.
 #advanced tab, can copy this or seperate it out under sustom locations.
 
+#REMOVE ANY OLD REFERENCE TO /go2rtc/ socket.
+
 
 # Asterisk WebSocket: /asterisk-ws -> http://192.168.1.26:8088/ws this may be different on different PBX
 location /asterisk-ws {
@@ -19,12 +21,3 @@ location /asterisk-ws {
     proxy_read_timeout 86400s;
     proxy_send_timeout 86400s;
 }
-
-# go2rtc API: /go2rtc/ -> http://192.168.1.26:1984/
-location /go2rtc/ {
-    proxy_pass http://192.168.1.26:1984/;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_read_timeout 86400s;

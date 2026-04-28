@@ -9,57 +9,57 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icons/icon-180.png">
-    
+
     <script src="/jssip.min.js"></script>
-    
+
     <style>
         :root { --bg: #000; --panel: #1a1a1a; --green: #22c55e; --red: #ef4444; --text: #fff; --blue: #3b82f6; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: var(--bg); color: var(--text); 
-            height: 100dvh; display: flex; flex-direction: column; overflow: hidden; 
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
         }
-        #video-container { 
-            flex: 1; position: relative; background: #000; 
-            display: flex; align-items: center; justify-content: center; overflow: hidden; 
+        #video-container {
+            flex: 1; position: relative; background: #000;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
         video { width: 100%; height: 100%; object-fit: cover; }
-        
-        #login { 
-            position: absolute; inset: 0; background: rgba(0,0,0,0.95); 
-            z-index: 100; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; padding: 24px; 
+
+        #login {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.95);
+            z-index: 100; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; padding: 24px;
         }
         form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
-        input { 
-            width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; 
-            background: #111; color: #fff; font-size: 16px; outline: none; 
+        input {
+            width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333;
+            background: #111; color: #fff; font-size: 16px; outline: none;
         }
         .hidden { display: none !important; }
-        
-        #controls { 
-            display: none; 
+
+        #controls {
+            display: none;
             grid-auto-flow: column;
             grid-auto-columns: 1fr;
-            gap: 8px; 
-            padding: 12px; 
-            background: var(--panel); 
+            gap: 8px;
+            padding: 12px;
+            background: var(--panel);
             padding-bottom: calc(12px + env(safe-area-inset-bottom));
         }
-        button { 
-            padding: 16px 8px; border-radius: 12px; border: none; 
-            font-weight: 600; font-size: 14px; cursor: pointer; 
-            color: #fff; white-space: nowrap; overflow: hidden; 
+        button {
+            padding: 16px 8px; border-radius: 12px; border: none;
+            font-weight: 600; font-size: 14px; cursor: pointer;
+            color: #fff; white-space: nowrap; overflow: hidden;
         }
         .btn-call { background: var(--green); }
         .btn-hangup { background: var(--red); display: none; }
         .btn-action { background: #333; border: 1px solid #444; }
-        
-        #status { 
-            position: absolute; top: 12px; left: 12px; font-size: 10px; 
-            font-weight: bold; background: rgba(0,0,0,0.7); 
-            padding: 4px 8px; border-radius: 4px; z-index: 50; 
+
+        #status {
+            position: absolute; top: 12px; left: 12px; font-size: 10px;
+            font-weight: bold; background: rgba(0,0,0,0.7);
+            padding: 4px 8px; border-radius: 4px; z-index: 50;
             letter-spacing: 0.05em;
         }
     </style>
@@ -90,29 +90,48 @@ const API = window.location.origin;
 const $ = id => document.getElementById(id);
 const setStatus = t => { $('status').textContent = t.toUpperCase(); };
 
-// --- 1. VIDEO LOGIC ---
+// --- 1. VIDEO LOGIC (Authenticated Proxy) ---
 async function loadWebRTC(name) {
     setStatus('NEGOTIATING...');
     pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    pc.ontrack = e => { if (e.streams[0]) { $('video').srcObject = e.streams[0]; setStatus('LIVE'); } };
-    pc.addTransceiver('video', { direction: 'recvonly' });
     
+    pc.ontrack = e => { 
+        if (e.streams[0]) { 
+            $('video').srcObject = e.streams[0]; 
+            setStatus('LIVE'); 
+        } 
+    };
+
+    pc.addTransceiver('video', { direction: 'recvonly' });
+
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
     try {
+        // Now pointing to /go2rtc/ (proxied by Node) and including JWT in headers
         const res = await fetch(`${API}/go2rtc/api/webrtc?src=${encodeURIComponent(name)}`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+                'Authorization': `Bearer ${configData.token}`
+            },
             body: pc.localDescription.sdp
         });
+        
+        if (!res.ok) throw new Error('Unauthorized');
+        
         const answer = await res.text();
         await pc.setRemoteDescription({ type: 'answer', sdp: answer });
-    } catch (e) { setStatus('VIDEO ERROR'); }
+    } catch (e) { 
+        console.error(e);
+        setStatus('VIDEO ERROR'); 
+    }
 }
 
 // --- 2. SIP LOGIC ---
 function setupSIP() {
     const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // This /asterisk-ws path must be proxied in Nginx to your PBX
     const socket = new JsSIP.WebSocketInterface(`${wsProto}//${location.host}/asterisk-ws`);
 
     ua = new JsSIP.UA({
@@ -125,9 +144,9 @@ function setupSIP() {
     });
 
     ua.on('registered', () => setStatus('READY'));
-    ua.on('newRTCSession', e => { 
-        session = e.session; 
-        handleSession(); 
+    ua.on('newRTCSession', e => {
+        session = e.session;
+        handleSession();
     });
     ua.start();
 }
@@ -153,8 +172,8 @@ function startCall() {
 
 function hangup() { session?.terminate(); }
 function resetUI() {
-    $('callBtn').style.display = 'block';
-    $('hangupBtn').style.display = 'none';
+    if ($('callBtn')) $('callBtn').style.display = 'block';
+    if ($('hangupBtn')) $('hangupBtn').style.display = 'none';
     setStatus('READY');
 }
 
@@ -171,7 +190,7 @@ async function runAction(action) {
         setStatus('SENDING...');
         const res = await fetch(`${API}/api/action`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${configData.token}`
             },
@@ -189,7 +208,6 @@ function initApp() {
     ctrl.style.display = 'grid';
     ctrl.innerHTML = '';
 
-    // Call Button
     const callBtn = document.createElement('button');
     callBtn.id = 'callBtn';
     callBtn.className = 'btn-call';
@@ -197,7 +215,6 @@ function initApp() {
     callBtn.onclick = startCall;
     ctrl.appendChild(callBtn);
 
-    // Configured Actions (Max 2)
     configData.actions.forEach(action => {
         const btn = document.createElement('button');
         btn.className = 'btn-action';
@@ -206,7 +223,6 @@ function initApp() {
         ctrl.appendChild(btn);
     });
 
-    // Hangup Button
     const hangBtn = document.createElement('button');
     hangBtn.id = 'hangupBtn';
     hangBtn.className = 'btn-hangup';
@@ -237,14 +253,15 @@ async function doLogin(event) {
 window.onload = () => {
     const token = localStorage.getItem('jwt');
     if (token) {
-        fetch(`${API}/api/verify`, { headers: { 'Authorization': 'Bearer ' + token } })
+        fetch(`${API}/api/verify`, { 
+            headers: { 'Authorization': 'Bearer ' + token } 
+        })
         .then(res => res.json())
-        .then(data => { 
-            if (data.valid) { 
-                configData = data; 
-                configData.token = token; 
-                initApp(); 
-            } 
+        .then(data => {
+            if (data.valid) {
+                configData = data;
+                initApp();
+            }
         }).catch(() => localStorage.removeItem('jwt'));
     }
 };

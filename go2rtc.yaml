@@ -4,7 +4,7 @@ streams:
     #-- ffmpeg:CAMERA_URL#video=h264#hardware#filter:v=transpose=1  ---  use this if transpose from a landscape camera.  
 
 webrtc:
-  listen: :8557 #webrtc port must match docker-compose.yml and config.yaml
+  listen: :8557
   candidates:
     - door.your domain.com:8557 #candidates tell client where to find webrtc tunnel, must have port forwarded on router.
 #    - 192.168.1.26:8557 local server port optional edge may complain about security.
@@ -13,4 +13,3 @@ webrtc:
 
 rtsp:
   backchannel: true #these settings help speed up rtsp, optional.
-  timeout: 5

@@ -5,65 +5,105 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
-// 1. LOAD CONFIG
+// 1. INITIALIZATION & CONFIG MAPPING
 const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config.yaml';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    console.error("❌ FATAL: JWT_SECRET environment variable is not set.");
+    process.exit(1);
+}
+
 let config;
 try {
     config = yaml.load(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    console.log("✅ Config Loaded Successfully");
+    console.log("✅ Configuration loaded successfully.");
 } catch (e) {
-    console.error("❌ Config Load Error:", e.message);
+    console.error("❌ FATAL: Could not read config.yaml:", e.message);
     process.exit(1);
 }
 
 const app = express();
 app.set('trust proxy', true);
 app.use(express.json());
+
+// 2. THE SECURITY GATE (go2rtc Authenticated Proxy)
+// Intercepts /go2rtc calls, verifies JWT, then tunnels to the internal container
+app.use('/go2rtc', (req, res, next) => {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) return res.status(401).send('Unauthorized');
+    
+    try {
+        jwt.verify(auth.slice(7), JWT_SECRET);
+        next();
+    } catch (e) { 
+        res.status(401).send('Invalid or Expired Token'); 
+    }
+}, createProxyMiddleware({
+    target: 'http://go2rtc:1984', // Internal Docker DNS
+    pathRewrite: { '^/go2rtc': '' },
+    ws: true, // Enables WebRTC/WebSocket signaling through the proxy
+    logLevel: 'warn'
+}));
+
+// 3. STATIC ASSETS
 app.use(express.static(path.join(__dirname, 'public')));
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error("❌ JWT_SECRET Env Var Missing");
-    process.exit(1);
-}
-
-// 2. PORTABLE CLIENT CONFIG DATA
-// We map the config to a sanitized version for the phone
-const getClientConfig = (user) => ({
-    video: { name: config.video.webrtc_name },
+// 4. HELPER: GENERATE CLIENT PACKAGE
+// This sends the frontend exactly what it needs and nothing more (security)
+const getClientConfig = (user, token) => ({
+    token,
+    video: { 
+        name: config.video.webrtc_name 
+    },
     pbx: {
         dial_extension: config.pbx.dial_extension,
         user_agent: config.pbx.user_agent,
         username: user.pbx_username,
         password: user.pbx_password
     },
-    // Slice to 2 max, and remove the 'url' property for security
-    actions: (config.actions || []).slice(0, 2).map(({ url, ...safeAction }) => safeAction)
+    // Only send action labels/icons to the UI; keep URLs hidden on backend
+    actions: (config.actions || []).map(({ id, label, icon, type, payload }) => ({
+        id, label, icon, type, payload
+    }))
 });
 
-// 3. AUTH ROUTES
+// 5. AUTHENTICATION ROUTES
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const user = config.users.find(u => u.username === username);
+
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, ...getClientConfig(user) });
+
+    const expiry = `${config.server.token_expiry_days || 30}d`;
+    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: expiry });
+    
+    console.log(`👤 User logged in: ${username} (Expiry: ${expiry})`);
+    res.json(getClientConfig(user, token));
 });
 
 app.get('/api/verify', (req, res) => {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) return res.status(401).send();
+
     try {
         const payload = jwt.verify(auth.slice(7), JWT_SECRET);
         const user = config.users.find(u => u.username === payload.username);
-        res.json({ valid: true, ...getClientConfig(user) });
-    } catch (e) { res.status(401).send(); }
+        
+        if (!user) throw new Error('User not found');
+        
+        res.json({ valid: true, ...getClientConfig(user, auth.slice(7)) });
+    } catch (e) { 
+        res.status(401).send(); 
+    }
 });
 
-// 4. THE ACTION PROXY (The "Free Range" Engine)
+// 6. ACTION DISPATCHER (IoT Hooks)
+// Executes sensitive URLs (like opening a relay) purely from the backend
 app.post('/api/action', async (req, res) => {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) return res.status(401).send();
@@ -71,29 +111,29 @@ app.post('/api/action', async (req, res) => {
     try {
         jwt.verify(auth.slice(7), JWT_SECRET);
         const { actionId } = req.body;
-        
-        // Find action in the original config (which contains the URL)
         const action = config.actions.find(a => a.id === actionId);
 
         if (action && action.type === 'hook') {
-            console.log(`🚀 [ACTION] ${action.label} -> Triggering ${action.url}`);
+            console.log(`🔌 Executing hook: ${action.label} (${action.url})`);
             
-            // Execute the webhook from the server environment
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-            fetch(action.url, { 
-                method: 'POST', 
-                signal: controller.signal 
-            }).catch(err => console.error(`⚠️ Hook failed: ${err.message}`));
+            // Background fetch to the local IoT device
+            fetch(action.url, { method: 'POST' }).catch(err => {
+                console.error(`❌ Hook failed: ${action.label}`, err.message);
+            });
 
             return res.json({ success: true });
         }
-        res.status(400).json({ error: 'Invalid Action ID or Type' });
-    } catch (e) { res.status(401).send(); }
+        res.status(400).json({ error: 'Action not found or invalid type' });
+    } catch (e) { 
+        res.status(401).send(); 
+    }
 });
 
-// 5. START SERVER
-http.createServer(app).listen(config.server.listen_port, '0.0.0.0', () => {
-    console.log(`🚀 OneDoor Portable Backend: Port ${config.server.listen_port}`);
+// 7. START SERVER
+const PORT = config.server.listen_port || 8099;
+http.createServer(app).listen(PORT, '0.0.0.0', () => {
+    console.log(`--- OneDoor Secure Backend ---`);
+    console.log(`🚀 Service running on port ${PORT}`);
+    console.log(`🛡️ JWT Security active`);
+    console.log(`🎥 Video proxy linked to go2rtc:1984`);
 });
