@@ -58,5 +58,5 @@ It’s the perfect ap (or dashboard) to point your Home Assistant door notificat
 * Day one: pre release had an unauthentaced privacy concern fix. Please sync updates.
 * Day two: small updates with docs and some TLS and DTLS-SRTP hardening.
 * Non-PBX feature research: performance may not meet the OneDoor standard.
-* No plans for: multiple doors, logout feature that  detracts from UI.
-* May consider: powerful actions with feedback, tighter integration w/ pbx, go2rtc, nginx.
+* Big things are coming. Nobody should be forced to learn PBX and infra to have a great intercom. v020 will be one single container handling almost everything for the user: asterisk config, keygens, ws routing, etc. Config parser will still allow for more advanced yaml config to any subsystem including connecting external PBX via dialplan. User will only need name, pass, and camera in config. Their NPM instance will need zero advanced settings, just websockets and SSL.
+
