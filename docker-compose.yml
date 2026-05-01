@@ -18,5 +18,5 @@ services:
 #     - 8557:8557/udp #fast video, default shown. expose to internet
 #     - 10000-10220:10000-10220/udp #fast audio, default shown. expose to internet.
 #     - 5060:5060 #local intercom
-#     - 5040:5040 #asterisk ami for home assistant or management app. default hass>
+#     - 5040:5040 #asterisk ami for home assistant
 #     - 1984:1984 #go2rtc console
