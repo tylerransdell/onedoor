@@ -116,4 +116,4 @@ OneDoor v020 makes professional‑grade door communication **as simple as runnin
 
 v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call.
 
-v022 - Implement stronger token scheme for sip socket to protect against url logging.
+v022 - Implement better token scheme. Current scheme is good. Raising standard to best.
