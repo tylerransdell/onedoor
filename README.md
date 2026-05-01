@@ -111,3 +111,8 @@ Audio, video, SIP, DTLS, and websocket routing are all handled automatically.
 This project started as a quest to produce the perfect single door notification target. Now it's evolving.
 Nobody should have to learn PBX, SIP, RTP, DTLS, or telecom infrastructure just to have a great intercom.  
 OneDoor v020 makes professional‑grade door communication **as simple as running one container** — and as beautiful as a modern app should be.
+
+## Roadmap
+
+v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call.
+v022 - Implement stronger token scheme for sip socket to protect against url logging.
