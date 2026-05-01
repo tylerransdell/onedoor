@@ -16,7 +16,8 @@ You provide **very little**:
 
 …and OneDoor generates the entire intercom stack automatically.
 
-Just a **beautiful, instant, professional‑grade intercom** that feels like it came from the future.
+Just an **instant, professional‑grade intercom** that feels like it came from the future.
+
 ---
 
 ## 📸 Interface Preview
