@@ -1,1 +1,1 @@
-docker exec -it onedoor node -e "console.log(require('bcryptjs').hashSync('YOUR_PASSWORD', 10))"
+docker run --rm node:slim npx -y bcryptjs YOUR_PASSWORD 10

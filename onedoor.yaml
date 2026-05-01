@@ -1,0 +1,32 @@
+server:
+  listen_port: 8099 #generally dont change this
+  token_expiry_days: 30
+
+video:
+  webrtc_name: "camera1" #must match stream from go2rtc.yaml
+
+pbx:
+  dial_extension: "102" #pbx extension that call button calls
+  user_agent: "OneDoor - Client"
+
+users:
+  - username: "seconduser" #login to onedoor
+    password_hash: "$longtok..." #see makepass.example this password to onedoor
+    pbx_username: "user1" #pbx credential
+    pbx_password: "useronepass" #pbx credential
+  - username: "seconduser"
+    password_hash: "$2a$10$..."
+    pbx_username: "user2"
+    pbx_password: "usertwopass"
+
+actions: #additional buttons that do things
+  - id: "light_01" #placeholder
+    label: "Illuminator" #this shows up on button. keep it short if 3 buttons.
+    type: "hook" #"hook" for webhook, "dtmf" for sip command. 
+    icon: "💡" #this also shows up on button.
+    url: "http://192.168.1.50/api/relay/on" #url for webhooks, payloads for dtmf
+  - id: "door_01"
+    label: "Unlock"
+    type: "dtmf"
+    icon: "🔓"
+    payload: "1"

@@ -1,0 +1,79 @@
+[global]
+type=global
+user_agent=OneDoor-Intercom
+default_realm=asterisk
+endpoint_identifier_order=username,ip
+externaddr=              ;form config/socker_host
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
+external_signaling_address=   ;form config/docker_host
+external_media_address=  ;form config/socker_host
+
+[105]
+type=endpoint
+context=intercom-logic
+disallow=all
+allow=ulaw
+auth=105_auth
+aors=105
+transport=transport-udp
+force_rport=yes
+rewrite_contact=yes
+from_domain=     ;from config/docker_host
+
+[105_auth]
+type=auth
+auth_type=userpass
+username=105
+password=one2345door
+
+[105]
+type=aor
+max_contacts=1
+
+[transport-ws]
+type=transport
+protocol=ws
+bind=0.0.0.0:8088
+external_media_address=door.domain.com  ; from config/domain
+external_signaling_address=door.domain.com ; from config/domain
+
+[user1]                                         ;auto generate with onedoor.yaml
+type=aor
+max_contacts=5
+remove_existing=yes
+
+[user1-auth]                                    ;auto generate with onedoor.yaml
+type=auth
+auth_type=userpass
+username=user1                                  ;auto generate with onedoor.yaml
+password=safddsafdsaf                           ;auto generate with onedoor.yaml
+realm=asterisk
+
+[user1]                                         ;auto generate with onedoor.yaml
+type=endpoint
+context=intercom-logic
+disallow=all
+allow=ulaw
+auth=user1-auth
+aors=user1
+transport=transport-ws
+webrtc=yes
+media_encryption=dtls
+dtls_verify=no
+dtls_setup=actpass
+dtls_cert_file=/etc/asterisk/keys/asterisk.crt
+dtls_private_key=/etc/asterisk/keys/asterisk.key
+dtls_ca_file=/etc/asterisk/keys/ca.crt
+ice_support=yes
+use_avpf=yes
+rtcp_mux=yes
+rewrite_contact=yes
+rtp_symmetric=yes
+force_rport=yes
+media_use_received_transport=yes
+identify_by=username
+

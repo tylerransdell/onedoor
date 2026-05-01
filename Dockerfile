@@ -1,17 +1,25 @@
-FROM node:20-slim
+FROM alexxit/go2rtc:latest
+
+RUN apk add --no-cache \
+    asterisk \
+    asterisk-srtp \
+    asterisk-opus \
+    libsrtp \
+    openssl \
+    curl \
+    nodejs \
+    npm \
+    python3 \
+    py3-pip \
+    py3-yaml \
+    bash \
+    && pip3 install --break-system-packages PyYAML
 
 WORKDIR /app
-
-# Install dependencies from package.json
 COPY package*.json ./
-RUN npm install --omit=dev
-
-# Explicitly add the proxy middleware needed for the go2rtc tunnel
-RUN npm install http-proxy-middleware
-
-# Copy the rest of your sanitized 011 code
+RUN npm install --production
 COPY . .
+RUN chmod +x /app/keys.sh /app/entrypoint.sh
 
-EXPOSE 8099
+ENTRYPOINT ["/app/entrypoint.sh"]
 
-CMD ["node", "server.js"]

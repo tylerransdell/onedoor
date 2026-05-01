@@ -1,13 +1,13 @@
 streams:
-  frontsubsmall: #name must match config.yaml,
-    - rtsp://192.168.1.31:8554/frontsubsmall #address is local address of your camera stream
+  camera1: #name must match onedoor.yaml, simple default shown.
+    - rtsp://192.168.1.31:8554/frontsubsmall #local address of your camera stream
     #-- ffmpeg:CAMERA_URL#video=h264#hardware#filter:v=transpose=1  ---  use this if transpose from a landscape camera.  
 
 webrtc:
   listen: :8557
   candidates:
-    - door.your domain.com:8557 #candidates tell client where to find webrtc tunnel, must have port forwarded on router.
-#    - 192.168.1.26:8557 local server port optional edge may complain about security.
+    - door.yourdomain.com:8557 #candidates tell client where to find webrtc tunnel, must have port forwarded on router.
+#    - 192.168.1.26:8557 local server port optional.
 #    -stun:8557 optional
   ice_lite: false #apple doesnt seem to like this one so default false.
 

@@ -94,12 +94,12 @@ const setStatus = t => { $('status').textContent = t.toUpperCase(); };
 async function loadWebRTC(name) {
     setStatus('NEGOTIATING...');
     pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    
-    pc.ontrack = e => { 
-        if (e.streams[0]) { 
-            $('video').srcObject = e.streams[0]; 
-            setStatus('LIVE'); 
-        } 
+
+    pc.ontrack = e => {
+        if (e.streams[0]) {
+            $('video').srcObject = e.streams[0];
+            setStatus('LIVE');
+        }
     };
 
     pc.addTransceiver('video', { direction: 'recvonly' });
@@ -117,21 +117,22 @@ async function loadWebRTC(name) {
             },
             body: pc.localDescription.sdp
         });
-        
+
         if (!res.ok) throw new Error('Unauthorized');
-        
+
         const answer = await res.text();
         await pc.setRemoteDescription({ type: 'answer', sdp: answer });
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
-        setStatus('VIDEO ERROR'); 
+        setStatus('VIDEO ERROR');
     }
 }
 
 // --- 2. SIP LOGIC ---
 function setupSIP() {
-    // Hard-coded to wss: to ensure encrypted signaling is always enforced
-    const socket = new JsSIP.WebSocketInterface(`wss://${location.host}/asterisk-ws`);
+    // Connect to /ws with JWT as query param (matches server upgrade handler)
+    const wsUrl = `wss://${location.host}/ws?token=${encodeURIComponent(configData.token)}`;
+    const socket = new JsSIP.WebSocketInterface(wsUrl);
 
     ua = new JsSIP.UA({
         sockets: [socket],
@@ -152,7 +153,7 @@ function setupSIP() {
 
 function handleSession() {
     session.on('peerconnection', d => {
-        d.peerconnection.ontrack = e => { 
+        d.peerconnection.ontrack = e => {
             // Precision fix: modern browsers look for e.track.kind
             if (e.track.kind === 'audio') {
                 $('remoteAudio').srcObject = e.streams[0];
@@ -261,8 +262,8 @@ async function doLogin(event) {
 window.onload = () => {
     const token = localStorage.getItem('jwt');
     if (token) {
-        fetch(`${API}/api/verify`, { 
-            headers: { 'Authorization': 'Bearer ' + token } 
+        fetch(`${API}/api/verify`, {
+            headers: { 'Authorization': 'Bearer ' + token }
         })
         .then(res => res.json())
         .then(data => {

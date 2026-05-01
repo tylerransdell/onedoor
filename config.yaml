@@ -1,32 +1,35 @@
-server:
-  listen_port: 8099 #generally dont change this, change port in compose if required.
-  token_expiry_days: 30
+####OneDoor unified docker config - bind to /app/config.yaml
+domain: #required domain name
+docker_host: #required local ip
 
-video:
-  webrtc_name: "frontsubsmall" #must match stream from go2rtc.yaml
+
+go2rtc:
+  simple_mode: #true please
+  camera: #url for your camera feed
+  domain: #REQUIRED if ANY other service run in simple mode. you must be dns addressable.
+
+onedoor:
+  simple_mode: #true please
+  token_expiry_days: #default 30, 1-400 allowed.
+  users:
+    - username:
+      password_hash: #use makepass.example one-liner
+    - username: #1-99 users allowed
+      password_hash:
+  actions: # up to two actions. can be same type. slightly different format per type. 
+    - id: #placeholer string
+      label: #name on button
+      type: #"hook" or "dtmf"
+      icon: #icon
+      url: #url for "hook", payload: for "dtmf"
 
 pbx:
-  dial_extension: "102" #pbx extension that call button calls
-  user_agent: "OneDoor - Client"
-
-users:
-  - username: "firstuser" #login to onedoor
-    password_hash: "$longtok..." #see makepass.example this password to onedoor
-    pbx_username: "user1" #pbx credential
-    pbx_password: "useronepass" #pbx credential
-  - username: "seconduser"
-    password_hash: "$2a$10$..."
-    pbx_username: "user2"
-    pbx_password: "usertwopass"
-
-actions: #additional buttons that do things
-  - id: "light_01" #placeholder
-    label: "Illuminator" #this shows up on button. keep it short if 3 buttons.
-    type: "hook" #"hook" for webhook, "dtmf" for sip command. 
-    icon: "💡" #this also shows up on button.
-    url: "http://192.168.1.50/api/relay/on" #url for webhooks, payloads for dtmf
-  - id: "door_01"
-    label: "Unlock"
-    type: "dtmf"
-    icon: "🔓"
-    payload: "1"
+  simple_mode: #true please
+# WARNING-Switching from advanced to simple mode with active binds will wipe your configs.
+# simple_mode:false means that you must bind your own configs to:
+# /config/go2rtc.yaml /app/onedoor.yaml and /etc/asterisk/
+# advanced mode will also disable automatic dtls key gens for pbx.
+# random passwords for pbx and onedoor must match, so....
+# using advanced mode for either onedoor or pbx means you must use it for both.
+# go2rtc advanced mode can be used without needing advanced onedoor or pbx.
+# simple_mode intercom is 105:open2345door auto answer = on
