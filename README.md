@@ -99,10 +99,9 @@ Audio, video, SIP, DTLS, and websocket routing are all handled automatically.
 
 ## 🗺 Roadmap
 
-- Multi‑camera support  MoreDoors? ALLthedoors? YourDoors?
-- 3‑action non‑PBX mode
+- Multi‑camera support  MoreDoors? YourDoors?
 - Landscape configuration
-- Audit logging
+- Ideas? 
 
 ---
 
@@ -112,12 +111,12 @@ This project started as a quest to produce the perfect single door notification 
 Nobody should have to learn PBX, SIP, RTP, DTLS, or telecom infrastructure just to have a great intercom.  
 OneDoor v020 makes professional‑grade door communication **as simple as running one container** — and as beautiful as a modern app should be.
 
-## 🗺️ Roadmap
+## 🗺️ RUpdates
 
 v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call --- DONE
 
 v022 - Implement better token scheme. Current scheme is good. Raising standard to best in class. Reconfigure status indicator to PBX priority. Video ashould be obvious alreay.
 
-v023? v030? Are we attacking enterprise next? Let me know where this needs to go.
+v023 - Docker bridge mode support for simple_mode. 
 
 Non-SIP crowd - Sorry. Research confirms your setup will not meet OneDoor standards.
