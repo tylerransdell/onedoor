@@ -116,4 +116,6 @@ OneDoor v020 makes professional‑grade door communication **as simple as runnin
 
 v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call --- DONE
 
-v022 - Implement better token scheme. Current scheme is good. Raising standard to best.
+v022 - Implement better token scheme. Current scheme is good. Raising standard to best in class. Reconfigure status indicator to PBX priority. Video ashould be obvious alreay.
+
+v023? v030? Are we attacking enterprise next? Let me know where this needs to go.
