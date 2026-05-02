@@ -85,7 +85,7 @@ if onedoor_simple:
     onedoor_out = {
         'server': {'listen_port': 8099, 'token_expiry_days': master['onedoor'].get('token_expiry_days') or 30},
         'video': {'webrtc_name': 'camera1'},
-        'pbx': {'dial_extension': '102', 'user_agent': 'OneDoor - Client'},
+        'pbx': {'dial_extension': '700', 'user_agent': 'OneDoor - Client'},
         'users': final_users_list,
         'actions': master['onedoor'].get('actions', [])
     }
