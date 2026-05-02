@@ -1,5 +1,5 @@
 # OneDoor 🚪    
-*(Build 020 — Unified Container Release)*
+*(Build 021 — Unified Container Release)*
 
 OneDoor is a **hyper‑focused, ultra‑fast, beautifully designed** door communication app.  
 It launches instantly, streams instantly, talks instantly — and now installs instantly.
@@ -89,7 +89,7 @@ Audio, video, SIP, DTLS, and websocket routing are all handled automatically.
 ## 🔐 Security Model
 
 - JWT‑protected websocket proxy
-- DTLS keys generated on first boot (persist if you bind `/var/lib/asterisk/keys`)
+- DTLS keys generated on first boot (persist if you bind `/etc/asterisk/keys`)
 - PBX passwords regenerated each startup in simple_mode: true
 - No plaintext SIP passwords
 - No external cloud services
@@ -114,6 +114,6 @@ OneDoor v020 makes professional‑grade door communication **as simple as runnin
 
 ## Roadmap
 
-v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call.
+v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call --- DONE
 
 v022 - Implement better token scheme. Current scheme is good. Raising standard to best.
