@@ -7,7 +7,7 @@ video:
   webrtc_name: "camera1" #must match stream from go2rtc.yaml
 
 pbx:
-  dial_extension: "102" #pbx extension that call button calls
+  dial_extension: "700" #pbx extension that call button calls
   user_agent: "OneDoor - Client"
 
 users:
