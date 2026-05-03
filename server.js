@@ -1,3 +1,4 @@
+// server.js
 const yaml = require('js-yaml');
 const express = require('express');
 const jwt = require('jsonwebtoken');
@@ -5,7 +6,11 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto'); // ← ADD: for WS_TOKEN generation
 const { createProxyMiddleware } = require('http-proxy-middleware');
+
+// Generate or load WS token silently — NEVER logged
+const WS_TOKEN = process.env.WS_TOKEN || crypto.randomBytes(16).toString('hex'); // ← ADD
 
 // 1. CONFIG & SECRETS
 const CONFIG_PATH = process.env.CONFIG_PATH || '/app/onedoor.yaml';
@@ -67,6 +72,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const getClientConfig = (user, token) => ({
     token,
+    ws_token: WS_TOKEN, // ← ADD: return WS token to frontend
     video: { name: config.video.webrtc_name },
     pbx: {
         dial_extension: config.pbx.dial_extension,
@@ -122,13 +128,13 @@ app.post('/api/action', async (req, res) => {
     }
 });
 
-// 5. WEBSOCKET UPGRADE HANDLER (JWT via ?token=)
+// 5. WEBSOCKET UPGRADE HANDLER
 const server = http.createServer(app);
 
 server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    // go2rtc: /go2rtc/* — JWT via Authorization header (already handled by proxy middleware for HTTP, but WS needs manual check)
+    // go2rtc: /go2rtc/* — JWT via Authorization header (unchanged)
     if (url.pathname.startsWith('/go2rtc')) {
         const auth = req.headers.authorization;
         if (!auth?.startsWith('Bearer ') || !jwt.verify(auth.slice(7), JWT_SECRET)) {
@@ -140,10 +146,10 @@ server.on('upgrade', (req, socket, head) => {
         return;
     }
 
-    // Asterisk: /ws — JWT via query param ?token=
+    // Asterisk: /ws — WS_TOKEN via query param ?ws_token= (CHANGED)
     if (url.pathname === '/ws') {
-        const token = url.searchParams.get('token');
-        if (!token || !jwt.verify(token, JWT_SECRET)) {
+        const wsToken = url.searchParams.get('ws_token'); // ← CHANGED: ws_token param
+        if (!wsToken || wsToken !== WS_TOKEN) { // ← CHANGED: compare to WS_TOKEN
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
             return;
@@ -164,4 +170,5 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`🛡️ JWT: active`);
     console.log(`🎥 go2rtc: /go2rtc → 127.0.0.1:1984`);
     console.log(`📞 Asterisk WS: /ws → 127.0.0.1:8088`);
+    // Intentionally NO console.log(WS_TOKEN)
 });

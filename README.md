@@ -1,5 +1,5 @@
 # OneDoor 🚪    
-*(Build 021 — Unified Container Release)*
+*(Build 022 — Unified Container Release)*
 
 OneDoor is a **hyper‑focused, ultra‑fast, beautifully designed** door communication app.  
 It launches instantly, streams instantly, talks instantly — and now installs instantly.
@@ -111,12 +111,12 @@ This project started as a quest to produce the perfect single door notification 
 Nobody should have to learn PBX, SIP, RTP, DTLS, or telecom infrastructure just to have a great intercom.  
 OneDoor v020 makes professional‑grade door communication **as simple as running one container** — and as beautiful as a modern app should be.
 
-## 🗺️ RUpdates
+## 🗺️ Rpdates
 
 v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call --- DONE
 
-v022 - Implement better token scheme. Current scheme is good. Raising standard to best in class. Reconfigure status indicator to PBX priority. Video ashould be obvious alreay.
+v022 - Implement better token scheme. Current scheme is good. Raising standard to best in class. --DONE
 
-v023 - Docker bridge mode support for simple_mode. 
+v023 - Docker bridge mode support for simple_mode. Status indicator tuning.
 
 Non-SIP crowd - Sorry. Research confirms your setup will not meet OneDoor standards.

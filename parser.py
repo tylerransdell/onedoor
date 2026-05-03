@@ -116,7 +116,6 @@ type=global
 user_agent=OneDoor-Intercom
 default_realm=asterisk
 endpoint_identifier_order=username,ip
-externaddr={docker_host}
 
 [transport-udp]
 type=transport

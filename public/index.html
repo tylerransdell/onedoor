@@ -131,7 +131,7 @@ async function loadWebRTC(name) {
 // --- 2. SIP LOGIC ---
 function setupSIP() {
     // Connect to /ws with JWT as query param (matches server upgrade handler)
-    const wsUrl = `wss://${location.host}/ws?token=${encodeURIComponent(configData.token)}`;
+    const wsUrl = `wss://${location.host}/ws?ws_token=${encodeURIComponent(configData.ws_token)}`;
     const socket = new JsSIP.WebSocketInterface(wsUrl);
 
     ua = new JsSIP.UA({
