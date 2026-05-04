@@ -1,11 +1,11 @@
 # OneDoor 🚪    
-*(Build 022 — Unified Container Release)*
+*(Build 023 — Unified Container Release - Bridge mode tested)*
 
-OneDoor is a **hyper‑focused, ultra‑fast, beautifully designed** door communication app.  
+OneDoor is a **hyper‑focused, ultra‑fast, beautifully designed** door communication app for SIP devices.
 It launches instantly, streams instantly, talks instantly — and now installs instantly.
 It is a perfect notification URL, a desktop widget, or a kiosk, or a dashboard component.
 
-Build 020 introduces a **single unified container** that handles everything for you:
+Build 023 introduces a **single unified container** that handles everything for you:
 Asterisk, go2rtc, WebRTC, SIP, DTLS, websocket routing, backend, frontend, config and key generation — all fused into one appliance‑grade system.
 
 You provide **very little**:
@@ -45,16 +45,16 @@ Just an **instant, professional‑grade intercom** that feels like it came from 
 
 Requirements are intentionally minimal:
 
-- Docker + Docker Compose  
-- Any domain with TLS (any reverse proxy that supports HTTPS + WebSockets)  
-- Ability to forward the media ports  
-- One RTSP or go2rtc‑compatible camera  
+- Docker + Docker Compose
+- Any domain with TLS (any reverse proxy that supports HTTPS + WebSockets)
+- Ability to forward the media ports
+- One RTSP or go2rtc‑compatible camera
 - Your SIP intercom or door station
 
-**No PBX server.**  
-**No websocket proxy configuration.**  
-**No dialplan editing.**  
-**No TLS passthrough tricks.**  
+**No PBX server.**
+**No websocket proxy configuration.**
+**No dialplan editing.**
+**No TLS passthrough tricks.**
 
 ---
 
@@ -67,18 +67,18 @@ Enter a 32+ character JWT secret.
 ### 2. Fill out `config.yaml`
 - Set your domain, camera url, username, and make a password hash from a single line command. 
   *(You no longer need to start the container to generate the hash.)*
+  *(Performance stream recommendation: <=720p, <2mbps, CBR, H264, 10FPS, 1/10 key frames.)*
 
 ### 3. Start OneDoor
 ```bash docker compose up -d```
-Or clone and ```bash docker compose -d --build```
+
 ### 4. Config Nginx Proxy Manager
 Other proxy ok too. You just need websockets/SSL/HSTS/HTTP/2 checked. No other settings.
 
 ### 5. Forward the media ports
-Forward the UDP RTP range defined in your compose file.  
+Forward the UDP RTP range defined in your compose file.
 
 ### 6. Set up your intercom
-
 
 ### 7. Enjoy OneDoor
 Open your domain in a browser or install the PWA.
@@ -88,12 +88,12 @@ Audio, video, SIP, DTLS, and websocket routing are all handled automatically.
 
 ## 🔐 Security Model
 
-- JWT‑protected websocket proxy
+- Token‑protected websocket proxy
 - DTLS keys generated on first boot (persist if you bind `/etc/asterisk/keys`)
 - PBX passwords regenerated each startup in simple_mode: true
-- No plaintext SIP passwords
-- No external cloud services
-- Local‑only webhooks
+- No external cloud services required
+- Local‑only webhooks, only name is passed to frontend
+- Token separation. If weaker url token leaks, it only exposes a secure asterisk socket.
 
 ---
 
@@ -111,12 +111,16 @@ This project started as a quest to produce the perfect single door notification 
 Nobody should have to learn PBX, SIP, RTP, DTLS, or telecom infrastructure just to have a great intercom.  
 OneDoor v020 makes professional‑grade door communication **as simple as running one container** — and as beautiful as a modern app should be.
 
-## 🗺️ Rpdates
+## ⚙️ Updates
 
 v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call --- DONE
 
 v022 - Implement better token scheme. Current scheme is good. Raising standard to best in class. --DONE
 
-v023 - Docker bridge mode support for simple_mode. Status indicator tuning.
+v023 - Docker bridge mode support for simple_mode. This is HUGE. Great isolation. Tested and working with CGNAT, Apple Private Relay, and Mullvad WireGuard. v023 is getting a docker repo --- DONE
+
+v024 - Minor bugs and tuning.. Status indicator. Video stream handling. Fix dialplan hangup logic. 
+
+Help wanted - Any SIP Gurus have a better dialplan or default universal config?
 
 Non-SIP crowd - Sorry. Research confirms your setup will not meet OneDoor standards.

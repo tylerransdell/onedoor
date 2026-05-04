@@ -1,8 +1,9 @@
 services:
   onedoor:
-    image: tylerransdell/onedoor:latest
+    image: tylerransdell/onedoor:latest #can use image for v023
+#   build: .   #use build with clone or image with dockerhub
     container_name: onedoor
-    network_mode: host
+#    network_mode: host  #no longer needed
     volumes:
       - ./config.yaml:/app/config.yaml:ro #server config
       - ./logs:/var/log/intercom:rw #optional
@@ -12,11 +13,11 @@ services:
 #   devices:
 #     - /dev/dri:/dev/dri  --- use hardware acceleration if transcoding camera feed
     restart: unless-stopped
-#   ports:   ----bridge mode not working must use host networking
-#     - 8099:8099 #onedoor
-#     - 8557:8557/tcp #fast video, default shown. expose to internet
-#     - 8557:8557/udp #fast video, default shown. expose to internet
-#     - 10000-10220:10000-10220/udp #fast audio, default shown. expose to internet.
-#     - 5060:5060 #local intercom
-#     - 5040:5040 #asterisk ami for home assistant
-#     - 1984:1984 #go2rtc console
+    ports:
+      - 8099:8099 #onedoor, lan only, point NPM here.
+      - 8557:8557/tcp #fast video, default shown. expose to wan
+      - 8557:8557/udp #fast video, default shown. expose to wan
+      - 10000-10220:10000-10220/udp #fast audio, default shown. expose to wan
+      - 5060:5060 #local intercom 105:one2345door, lan only
+#     - 5040:5040 #optional asterisk ami for home assistant monitor hass:one2345door, lan only 
+#     - 1984:1984 #optional go2rtc console, lan only

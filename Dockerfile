@@ -1,4 +1,4 @@
-FROM alexxit/go2rtc:latest
+FROM alexxit/go2rtc:1.9.14
 
 RUN apk add --no-cache \
     asterisk \
