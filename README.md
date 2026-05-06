@@ -115,7 +115,7 @@ OneDoor v020 makes professional‑grade door communication **as simple as runnin
 
 v02x - Updates introduced unified container, layred tokens, better NAT compatability, and simple_mode
 
-v030 - Major universal updates to ensure browser locks onto audio and video streams reliably. Better conferencing. Better NAT handling. 
+v030 - Major universal updates to ensure browser locks onto audio and video streams reliably. Better conferencing. Better NAT handling. v030 should work for anyone who struggled with v02x.
 sha256:f48e552281f6f682aeb56a28470758076d313f4490332ece5bfb60df83a26ff7
 
 v031 - Minor fixes planned to ensure confbridge ghosts dont remain after websockets are broken. Fix some PWA-specific brower qwirks.
