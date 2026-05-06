@@ -24,13 +24,20 @@
             flex: 1; position: relative; background: #000;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        video { width: 100%; height: 100%; object-fit: cover; background: #000; }
 
         #login {
             position: absolute; inset: 0; background: rgba(0,0,0,0.95);
             z-index: 100; display: flex; flex-direction: column;
             justify-content: center; align-items: center; padding: 24px;
         }
+
+        #audio-blocker {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+            z-index: 150; display: none; flex-direction: column;
+            justify-content: center; align-items: center; cursor: pointer;
+        }
+
         form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
         input {
             width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333;
@@ -70,7 +77,13 @@
 
 <div id="video-container">
     <video id="video" autoplay playsinline muted></video>
-    <audio id="remoteAudio" autoplay></audio>
+    <audio id="remoteAudio" autoplay playsinline></audio>
+
+    <div id="audio-blocker" onclick="unmuteAudio()">
+        <div style="background:#fff; color:#000; padding: 20px; border-radius: 50px; font-weight: bold;">
+            🔊 TAP TO HEAR AUDIO
+        </div>
+    </div>
 
     <div id="login">
         <h2 style="margin-bottom:20px; letter-spacing: -1px;">OneDoor</h2>
@@ -85,52 +98,57 @@
 <div id="controls"></div>
 
 <script>
-let ua, session, pc, configData;
+let ua, session, videoPC, configData;
 const API = window.location.origin;
 const $ = id => document.getElementById(id);
 const setStatus = t => { $('status').textContent = t.toUpperCase(); };
 
-// --- 1. VIDEO LOGIC (Authenticated Proxy) ---
-async function loadWebRTC(name) {
-    setStatus('NEGOTIATING...');
-    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+function unmuteAudio() {
+    $('remoteAudio').play();
+    $('audio-blocker').style.display = 'none';
+}
 
-    pc.ontrack = e => {
+// --- 1. VIDEO LOGIC (Status Cleaned) ---
+async function loadWebRTC(name) {
+    if (videoPC) videoPC.close(); // Prevent ghost connections on refresh
+    
+    videoPC = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+    videoPC.ontrack = e => {
         if (e.streams[0]) {
-            $('video').srcObject = e.streams[0];
-            setStatus('LIVE');
+            console.log("Video track received from go2rtc");
+            const v = $('video');
+            v.srcObject = e.streams[0];
+            v.play().catch(err => console.warn("Video playback pending interaction"));
         }
     };
 
-    pc.addTransceiver('video', { direction: 'recvonly' });
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+    videoPC.addTransceiver('video', { direction: 'recvonly' });
+    videoPC.addTransceiver('audio', { direction: 'inactive' });
 
     try {
-        // Now pointing to /go2rtc/ (proxied by Node) and including JWT in headers
+        const offer = await videoPC.createOffer();
+        await videoPC.setLocalDescription(offer);
+
         const res = await fetch(`${API}/go2rtc/api/webrtc?src=${encodeURIComponent(name)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain',
                 'Authorization': `Bearer ${configData.token}`
             },
-            body: pc.localDescription.sdp
+            body: videoPC.localDescription.sdp
         });
 
         if (!res.ok) throw new Error('Unauthorized');
-
         const answer = await res.text();
-        await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+        await videoPC.setRemoteDescription({ type: 'answer', sdp: answer });
     } catch (e) {
-        console.error(e);
-        setStatus('VIDEO ERROR');
+        console.error("Video Error:", e);
     }
 }
 
 // --- 2. SIP LOGIC ---
 function setupSIP() {
-    // Connect to /ws with JWT as query param (matches server upgrade handler)
     const wsUrl = `wss://${location.host}/ws?ws_token=${encodeURIComponent(configData.ws_token)}`;
     const socket = new JsSIP.WebSocketInterface(wsUrl);
 
@@ -144,6 +162,7 @@ function setupSIP() {
     });
 
     ua.on('registered', () => setStatus('READY'));
+    ua.on('registrationFailed', () => setStatus('SIP ERROR'));
     ua.on('newRTCSession', e => {
         session = e.session;
         handleSession();
@@ -152,29 +171,42 @@ function setupSIP() {
 }
 
 function handleSession() {
-    session.on('peerconnection', d => {
-        d.peerconnection.ontrack = e => {
-            // Precision fix: modern browsers look for e.track.kind
-            if (e.track.kind === 'audio') {
-                $('remoteAudio').srcObject = e.streams[0];
+    const attachTrack = () => {
+        if (session && session.connection) {
+            const receiver = session.connection.getReceivers().find(r => r.track && r.track.kind === 'audio');
+            if (receiver && receiver.track) {
+                const el = $('remoteAudio');
+                el.srcObject = new MediaStream([receiver.track]);
+                el.play().catch(() => {
+                    $('audio-blocker').style.display = 'flex';
+                });
             }
-        };
+        }
+    };
+
+    session.on('peerconnection', d => {
+        d.peerconnection.ontrack = () => attachTrack();
     });
+
     session.on('confirmed', () => {
         $('callBtn').style.display = 'none';
         $('hangupBtn').style.display = 'block';
         setStatus('IN CALL');
+        setTimeout(attachTrack, 100);
     });
+
     session.on('ended', resetUI);
     session.on('failed', resetUI);
 }
 
 function startCall() {
+    if (!ua || !ua.isRegistered()) {
+        setStatus("NOT READY");
+        return;
+    }
     const options = {
         mediaConstraints: { audio: true, video: false },
-        pcConfig: {
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        }
+        pcConfig: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
     };
     ua.call(`sip:${configData.pbx.dial_extension}@${location.hostname}`, options);
 }
@@ -183,6 +215,7 @@ function hangup() { session?.terminate(); }
 function resetUI() {
     if ($('callBtn')) $('callBtn').style.display = 'block';
     if ($('hangupBtn')) $('hangupBtn').style.display = 'none';
+    $('audio-blocker').style.display = 'none';
     setStatus('READY');
 }
 
@@ -192,8 +225,6 @@ async function runAction(action) {
         if (session) {
             session.sendDTMF(action.payload);
             setStatus(`SENT: ${action.payload}`);
-        } else {
-            alert("No active call for DTMF");
         }
     } else if (action.type === 'hook') {
         setStatus('SENDING...');
@@ -217,6 +248,7 @@ function initApp() {
     ctrl.style.display = 'grid';
     ctrl.innerHTML = '';
 
+    // Create Buttons
     const callBtn = document.createElement('button');
     callBtn.id = 'callBtn';
     callBtn.className = 'btn-call';
@@ -239,8 +271,9 @@ function initApp() {
     hangBtn.onclick = hangup;
     ctrl.appendChild(hangBtn);
 
+    // Sequential Start: Load video, then start SIP after a short delay
     loadWebRTC(configData.video.name);
-    setupSIP();
+    setTimeout(setupSIP, 500); 
 }
 
 async function doLogin(event) {

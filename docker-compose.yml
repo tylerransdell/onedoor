@@ -1,7 +1,7 @@
 services:
   onedoor:
-    image: tylerransdell/onedoor:latest #can use image for v023
-#   build: .   #use build with clone or image with dockerhub
+    image: tylerransdell/onedoor:v030 #can use image now
+    build: . #can build also
     container_name: onedoor
 #    network_mode: host  #no longer needed
     volumes:

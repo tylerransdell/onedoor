@@ -1,5 +1,5 @@
 # OneDoor 🚪    
-*(Build 023 — Unified Container Release - Bridge mode tested)*
+*(Build 023 — Universal)*
 
 OneDoor is a **hyper‑focused, ultra‑fast, beautifully designed** door communication app for SIP devices.
 It launches instantly, streams instantly, talks instantly — and now installs instantly.
@@ -113,14 +113,10 @@ OneDoor v020 makes professional‑grade door communication **as simple as runnin
 
 ## ⚙️ Updates
 
-v021 - Fix MVP issues, notably simple_mode bridge to conference instead of direct call --- DONE
+v02x - Updates introduced unified container, layred tokens, better NAT compatability, and simple_mode
 
-v022 - Implement better token scheme. Current scheme is good. Raising standard to best in class. --DONE
+v030 - Major universal updates to ensure browser locks onto audio and video streams reliably. Better conferencing. Better NAT handling. 
 
-v023 - Docker bridge mode support for simple_mode. This is HUGE. Great isolation. Tested and working with CGNAT, Apple Private Relay, and Mullvad WireGuard. v023 is getting a docker repo --- DONE
+v031 - Minor fixes planned to ensure confbridge ghosts dont remain after websockets are broken. Fix some PWA-specific brower qwirks.
 
-v024 - Minor bugs and tuning.. Status indicator. Video stream handling. Fix dialplan hangup logic. 
-
-Help wanted - Any SIP Gurus have a better dialplan or default universal config?
-
-Non-SIP crowd - Sorry. Research confirms your setup will not meet OneDoor standards.
+Help wanted - Any SIP Gurus who can help with dialplans and Asterisk.
