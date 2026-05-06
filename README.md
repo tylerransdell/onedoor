@@ -21,6 +21,14 @@ The result is a **professional‑grade, ultra‑responsive intercom** that feels
 
 ---
 
+## 📸 Interface Preview
+
+| Mobile PWA | Desktop Widget |
+| :---: | :---: |
+| ![Mobile View](screenshots/mobile_view.png) | ![Widget View](screenshots/widget_view.png) |
+
+---
+
 ## 🚀 Key Features  
 - **Universal build**: Broad compatibility across browsers, networks, and SIP devices.  
 - **Unified container**: Asterisk, go2rtc, backend, frontend, websocket proxy, and config generator — all in one.  
@@ -38,3 +46,5 @@ The result is a **professional‑grade, ultra‑responsive intercom** that feels
 ## ❤️ Why OneDoor Exists  
 Nobody should need to learn PBX internals, SIP signaling, RTP, SRTP, DTLS, or telecom engineering just to have a great intercom.  
 OneDoor exists to make **professional‑grade door communication simple, fast, and beautiful** — while staying fully local, fully private, and fully open.
+
+
