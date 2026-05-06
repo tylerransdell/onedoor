@@ -1,11 +1,11 @@
 # OneDoor 🚪    
-*(Build 023 — Universal)*
+*(Build 030 — Universal)*
 
 OneDoor is a **hyper‑focused, ultra‑fast, beautifully designed** door communication app for SIP devices.
 It launches instantly, streams instantly, talks instantly — and now installs instantly.
 It is a perfect notification URL, a desktop widget, or a kiosk, or a dashboard component.
 
-Build 023 introduces a **single unified container** that handles everything for you:
+Build 030 introduces a **single unified container** that handles everything for you:
 Asterisk, go2rtc, WebRTC, SIP, DTLS, websocket routing, backend, frontend, config and key generation — all fused into one appliance‑grade system.
 
 You provide **very little**:
@@ -116,6 +116,7 @@ OneDoor v020 makes professional‑grade door communication **as simple as runnin
 v02x - Updates introduced unified container, layred tokens, better NAT compatability, and simple_mode
 
 v030 - Major universal updates to ensure browser locks onto audio and video streams reliably. Better conferencing. Better NAT handling. 
+sha256:f48e552281f6f682aeb56a28470758076d313f4490332ece5bfb60df83a26ff7
 
 v031 - Minor fixes planned to ensure confbridge ghosts dont remain after websockets are broken. Fix some PWA-specific brower qwirks.
 
