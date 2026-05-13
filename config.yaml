@@ -6,7 +6,6 @@ docker_host: #required local ip
 go2rtc:
   simple_mode: #true please
   camera: #url for your camera feed
-  domain: #REQUIRED if ANY other service run in simple mode. you must be dns addressable.
 
 onedoor:
   simple_mode: #true please
