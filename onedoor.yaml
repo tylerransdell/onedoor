@@ -26,8 +26,14 @@ actions: #additional buttons that do things
     type: "hook" #"hook" for webhook, "dtmf" for sip command. 
     icon: "💡" #this also shows up on button.
     url: "http://192.168.1.50/api/relay/on" #url for webhooks, payloads for dtmf
-  - id: "door_01"
-    label: "Unlock"
-    type: "dtmf"
-    icon: "🔓"
-    payload: "1"
+  - id: "2"
+    label: "yard"
+    type: "link"
+    icon: "📷"
+    url: "https://nvr.mydomain.com#front-yard" #url for webhooks, payloads for dtmf
+#  - id: "door_01"
+#    label: "Unlock"
+#    type: "dtmf"
+#    icon: "🔓"
+#    payload: "1"
+

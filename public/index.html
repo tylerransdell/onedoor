@@ -237,6 +237,15 @@ async function runAction(action) {
             body: JSON.stringify({ actionId: action.id })
         });
         if (res.ok) setStatus('SUCCESS');
+    } 
+    // ADD: Handle the local redirection directly from client context
+    else if (action.type === 'link') {
+        if (action.url) {
+            window.location.href = action.url;
+            return; // Exit early so the status timeout doesn't fire as the page unloads
+        } else {
+            setStatus('LINK ERR');
+        }
     }
     setTimeout(() => setStatus(session?.isEstablished() ? 'IN CALL' : 'READY'), 2000);
 }

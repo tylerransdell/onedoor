@@ -18,9 +18,9 @@ onedoor:
   actions: # up to two actions. can be same type. slightly different format per type. 
     - id: #placeholer string
       label: #name on button
-      type: #"hook" or "dtmf"
+      type: #"hook" "link" or "dtmf"
       icon: #icon
-      url: #url for "hook", payload: for "dtmf"
+      url: #url for "hook" or "link", payload: for "dtmf"
 
 pbx:
   simple_mode: #true please

@@ -72,7 +72,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const getClientConfig = (user, token) => ({
     token,
-    ws_token: WS_TOKEN, // ← ADD: return WS token to frontend
+    ws_token: WS_TOKEN,
     video: { name: config.video.webrtc_name },
     pbx: {
         dial_extension: config.pbx.dial_extension,
@@ -80,9 +80,26 @@ const getClientConfig = (user, token) => ({
         username: user.pbx_username,
         password: user.pbx_password
     },
-    actions: (config.actions || []).map(({ id, label, icon, type, payload }) => ({
-        id, label, icon, type, payload
-    }))
+    // CHANGE: Conditionally build the object so webhook URLs stay on the backend
+    actions: (config.actions || []).map(action => {
+        const clientAction = {
+            id: action.id,
+            label: action.label,
+            icon: action.icon,
+            type: action.type
+        };
+
+        if (action.type === 'dtmf') {
+            clientAction.payload = action.payload;
+        }
+
+        if (action.type === 'link') {
+            clientAction.url = action.url; // Safe to expose to the browser
+        }
+
+        // If it's a 'hook', action.url is skipped entirely here
+        return clientAction;
+    })
 });
 
 app.post('/api/login', (req, res) => {
