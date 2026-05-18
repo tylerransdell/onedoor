@@ -38,13 +38,12 @@ The result is a **professional‑grade, ultra‑responsive intercom** that feels
 - **Ultra‑low latency**: Dedicated SIP stack for full‑duplex audio paired with go2rtc WebRTC video.  
 - **Privacy‑first**: No cloud, no telemetry, no external dependencies.  
 - **PWA + desktop widget**: Minimal, fast UI optimized for door response.  
-- **Instant control**: Tap a Home Assistant notification and you’re at the door in under a second.  
+- **Instant control**: Tap a notification and you’re at the door in under a second.  
 - **Door conferencing**: Up to 99 simultaneous viewers/callers.  
+- **Single button actions**: Easy-to-configure DTMF payloads, backend webhooks, or frontend links.
 
 ---
 
 ## ❤️ Why OneDoor Exists  
 Nobody should need to learn PBX internals, SIP signaling, RTP, SRTP, DTLS, or telecom engineering just to have a great intercom.  
 OneDoor exists to make **professional‑grade door communication simple, fast, and beautiful** — while staying fully local, fully private, and fully open.
-
-
