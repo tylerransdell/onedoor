@@ -73,6 +73,14 @@ The system passes video directly through go2rtc. Refer to the go2rtc Reference: 
 * Native Endpoints: Native SIP stations from Fanvil and Grandstream yield the cleanest architectural behavior.
 * Edge-Case Validation: Core stability is tested against the Aiphone IX-SS-2G.
 
+Required SIP Station Configuration:
+  - SIP Server IP: [Your Docker Host IP]
+  - Extension / Username: 105
+  - Password: one2345door
+  - Outbound Calling Target: 700 (Station must be configured to dial 700 on button-press)
+  - Inbound Call Restrictions: Must accept and answer incoming calls originating from 700
+  - Answer Mode: Auto-Answer (This may require connecting relays on Aiphone IX)
+
 ---
 
 ## 4. DEVELOPMENT ROADMAP & FUTURE WORK
