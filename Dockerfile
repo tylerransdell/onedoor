@@ -19,7 +19,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 COPY . .
-RUN chmod +x /app/keys.sh /app/entrypoint.sh
+RUN chmod +x /app/keys.sh /app/entrypoint.sh /app/doorbell-webhook.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 

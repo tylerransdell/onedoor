@@ -21,6 +21,9 @@ onedoor:
       type: #"hook" "link" or "dtmf"
       icon: #icon
       url: #url for "hook" or "link", payload: for "dtmf"
+  notifications: #enable by binding /vapid in docker-compose.yml
+    snooze_all: 90 #seconds to snooze all notifications after one is sent
+    snooze_same: 120 #for identical notifications if using multiple notifiers.
 
 pbx:
   simple_mode: #true please

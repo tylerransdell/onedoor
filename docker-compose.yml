@@ -8,6 +8,7 @@ services:
       - ./config.yaml:/app/config.yaml:ro #server config
       - ./logs:/var/log/intercom:rw #optional
       - ./keys:/etc/asterisk/keys:rw #persists dtls keys
+      - ./vapid:/vapid:rw #optional, binding enables notifications
     environment:
       - JWT_SECRET= #REQUIRED - any string at least 32 chars
 #   devices:
@@ -21,3 +22,4 @@ services:
       - 5060:5060 #local intercom 105:one2345door, lan only
 #     - 5040:5040 #optional asterisk ami for home assistant monitor hass:one2345door, lan only 
 #     - 1984:1984 #optional go2rtc console, lan only
+#     - 8199:8199 #notifications webhook listener - no auth, keep port protected.

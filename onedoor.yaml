@@ -37,3 +37,6 @@ actions: #additional buttons that do things
 #    icon: "🔓"
 #    payload: "1"
 
+notifications:
+  snooze_all: 90
+  snooze_same: 120

@@ -42,7 +42,7 @@ Modern, reliable, and tuned to outperform anything in its class.
 - **Action system** — DTMF commands, backend webhooks, or frontend links for NVR jumps and automations.
 - **Ecosystem‑friendly** — Works cleanly alongside Home Assistant, Frigate, NVRs, and existing SIP hardware.
 - **Appliance‑grade reliability** — Designed to run unattended, behind NAT, VPNs, and complex networks.
-
+- **Fast Notifications** — Pure WebPush straight to Apple/Google. No Firebase. No app. Custom hooks included.
 ---
 
 ## ❤️ Why OneDoor Exists

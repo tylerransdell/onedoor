@@ -6,69 +6,93 @@
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>OneDoor</title>
     <link rel="manifest" href="/manifest.json">
+    <script>
+      const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icons/icon-180.png">
-
     <script src="/jssip.min.js"></script>
 
     <style>
         :root { --bg: #000; --panel: #1a1a1a; --green: #22c55e; --red: #ef4444; --text: #fff; --blue: #3b82f6; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
             font-family: -apple-system, system-ui, sans-serif;
             background: var(--bg); color: var(--text);
-            height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+            height: 100dvh; 
+            overflow: hidden;
+            position: relative;
+            backface-visibility: hidden;
         }
+
         #video-container {
-            flex: 1; position: relative; background: #000;
+            position: absolute; inset: 0; background: #000;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
         video { width: 100%; height: 100%; object-fit: cover; background: #000; }
 
-        #login {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.95);
-            z-index: 100; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; padding: 24px;
-        }
-
-        #audio-blocker {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.6);
-            z-index: 150; display: none; flex-direction: column;
-            justify-content: center; align-items: center; cursor: pointer;
-        }
-
-        form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
-        input {
-            width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333;
-            background: #111; color: #fff; font-size: 16px; outline: none;
-        }
-        .hidden { display: none !important; }
-
         #controls {
             display: none;
-            grid-auto-flow: column;
-            grid-auto-columns: 1fr;
+            position: fixed;
+            z-index: 1000;
+            background: var(--panel);
             gap: 8px;
             padding: 12px;
-            background: var(--panel);
-            padding-bottom: calc(12px + env(safe-area-inset-bottom));
+            transition: none;
+            will-change: transform;
+            align-items: stretch;
+            justify-items: stretch;
         }
-        button {
-            padding: 16px 8px; border-radius: 12px; border: none;
-            font-weight: 600; font-size: 14px; cursor: pointer;
-            color: #fff; white-space: nowrap; overflow: hidden;
+
+        @media (orientation: portrait) {
+            #controls {
+                bottom: 0; left: 0; right: 0;
+                height: 72px;
+                padding-bottom: 18px;
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: 1fr;
+            }
+        }
+
+        @media (orientation: landscape) {
+            #controls {
+                top: 0; bottom: 0; right: 0;
+                width: 80px;
+                padding-top: 12px;
+                padding-bottom: 12px;
+                display: grid;
+                grid-auto-flow: row;
+                grid-auto-rows: 1fr;
+            }
+        }
+
+        button { 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px; 
+            border: none; 
+            font-weight: 600; 
+            font-size: 14px; 
+            cursor: pointer; 
+            color: #fff; 
+            white-space: nowrap; 
+            overflow: hidden;
         }
         .btn-call { background: var(--green); }
         .btn-hangup { background: var(--red); display: none; }
         .btn-action { background: #333; border: 1px solid #444; }
 
-        #status {
-            position: absolute; top: 12px; left: 12px; font-size: 10px;
-            font-weight: bold; background: rgba(0,0,0,0.7);
-            padding: 4px 8px; border-radius: 4px; z-index: 50;
-            letter-spacing: 0.05em;
-        }
+        #login { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; }
+        #audio-blocker { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; display: none; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
+        form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
+        input { width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; outline: none; }
+        .hidden { display: none !important; }
+        #status { position: absolute; top: 12px; left: 12px; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 4px; z-index: 50; letter-spacing: 0.05em; }
     </style>
 </head>
 <body>
@@ -250,41 +274,6 @@ async function runAction(action) {
     setTimeout(() => setStatus(session?.isEstablished() ? 'IN CALL' : 'READY'), 2000);
 }
 
-// --- 4. APP FLOW ---
-function initApp() {
-    $('login').classList.add('hidden');
-    const ctrl = $('controls');
-    ctrl.style.display = 'grid';
-    ctrl.innerHTML = '';
-
-    // Create Buttons
-    const callBtn = document.createElement('button');
-    callBtn.id = 'callBtn';
-    callBtn.className = 'btn-call';
-    callBtn.innerHTML = '📞 CALL';
-    callBtn.onclick = startCall;
-    ctrl.appendChild(callBtn);
-
-    configData.actions.forEach(action => {
-        const btn = document.createElement('button');
-        btn.className = 'btn-action';
-        btn.innerHTML = `${action.icon} ${action.label}`;
-        btn.onclick = () => runAction(action);
-        ctrl.appendChild(btn);
-    });
-
-    const hangBtn = document.createElement('button');
-    hangBtn.id = 'hangupBtn';
-    hangBtn.className = 'btn-hangup';
-    hangBtn.innerHTML = '📴 END';
-    hangBtn.onclick = hangup;
-    ctrl.appendChild(hangBtn);
-
-    // Sequential Start: Load video, then start SIP after a short delay
-    loadWebRTC(configData.video.name);
-    setTimeout(setupSIP, 500); 
-}
-
 async function doLogin(event) {
     event.preventDefault();
     const u = $('username').value, p = $('password').value;
@@ -316,6 +305,212 @@ window.onload = () => {
         }).catch(() => localStorage.removeItem('jwt'));
     }
 };
+
+// --- PUSH OPT-IN (Zero UI Impact + Orphan Recovery) ---
+const PUSH_LATER_KEY = 'onedoor_push_later';
+const PUSH_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function urlBase64ToUint8Array(base64url) {
+  // 1. Convert base64url to standard base64 FIRST
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // 2. Add padding if needed
+  const pad = (4 - base64.length % 4) % 4;
+  base64 += '='.repeat(pad);
+  
+  // 3. NOW safely decode
+  const binary = atob(base64);
+  
+  // 4. Convert to Uint8Array
+  return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
+}
+
+async function registerPush() {
+  console.log('🔧 registerPush() called');
+  
+  if (!configData?.vapid_public_key) {
+    console.error('❌ No VAPID key');
+    return;
+  }
+  
+  try {
+    console.log('🔍 Getting service worker...');
+    const reg = await navigator.serviceWorker.getRegistration('/') || 
+                await navigator.serviceWorker.register('/service-worker.js');
+    console.log('✅ SW registered:', reg.scope);
+    
+    console.log('🔍 Getting subscription...');
+    let sub = await reg.pushManager.getSubscription();
+    console.log('📦 Existing subscription:', sub ? 'YES' : 'NO');
+    
+    if (!sub) {
+      console.log('🔔 Creating new subscription...');
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(configData.vapid_public_key)
+      });
+      console.log('✅ Subscription created');
+    }
+    
+    console.log('📡 POSTing to backend...');
+    const res = await fetch(`${location.origin}/api/register-notification`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${configData.token}`
+      },
+      body: JSON.stringify({ subscription: sub.toJSON() })
+    });
+    
+    console.log('📡 HTTP Status:', res.status, res.statusText);
+    const data = await res.json();
+    console.log('🔔 Backend response:', data);
+    
+  } catch(e) {
+    console.error('💥 registerPush() error:', e.name, e.message);
+  }
+}
+
+function showPushModal(force = false) {
+  if (!configData?.vapid_public_key) return;
+  if (!force && Notification.permission !== 'default') return; // Skip gate unless forced
+  if (!force && Date.now() - parseInt(localStorage.getItem(PUSH_LATER_KEY) || '0') < PUSH_WEEK_MS) return;
+  if (!force && localStorage.getItem('push_opted') === 'denied') return;
+
+  const title = force ? "Re-enable Notifications?" : "Instant Door Alerts?";
+  const msg = force ? "Tap to restore instant door alerts." : "Tap to open when someone rings.";
+
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity 0.2s;';
+  el.innerHTML = `
+    <div style="background:#111;border:1px solid #333;border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+      <div style="font-size:24px;margin-bottom:8px;">🔔</div>
+      <h3 style="margin:0 0 6px;font-size:16px;color:#fff;">${title}</h3>
+      <p style="margin:0 0 16px;font-size:13px;color:#999;line-height:1.4;">${msg}</p>
+      <div style="display:flex;gap:10px;">
+        <button id="push-allow" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;font-size:14px;cursor:pointer;">Allow</button>
+        ${!force ? `<button id="push-later" style="flex:1;padding:10px;border:none;border-radius:8px;background:#222;color:#aaa;font-weight:600;font-size:14px;cursor:pointer;">Ask Later</button>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.style.opacity = '1');
+
+  document.getElementById('push-allow').onclick = async () => {
+    el.remove();
+    await Notification.requestPermission(); // Returns 'granted' instantly if already allowed
+    localStorage.setItem('push_opted', 'allowed');
+    localStorage.removeItem(PUSH_LATER_KEY);
+    registerPush();
+  };
+
+  if (!force) {
+    document.getElementById('push-later').onclick = () => {
+      el.remove();
+      localStorage.setItem(PUSH_LATER_KEY, Date.now().toString());
+    };
+  }
+}
+
+//  REPLACES initApp() PUSH CALL:
+async function initPushFlow() {
+  console.log('🔥 initPushFlow() START');
+
+  // Gate 1: Do we have config?
+  if (!configData) {
+    console.error('❌ configData is undefined — initPushFlow() called too early?');
+    return;
+  }
+  console.log('✅ configData exists');
+
+  // Gate 2: Is push enabled on server?
+  if (!configData.vapid_public_key) {
+    console.log('⚠️ configData.vapid_public_key is null/undefined — push disabled on server');
+    return;
+  }
+  console.log('✅ VAPID public key present:', configData.vapid_public_key.substring(0,20) + '...');
+
+  // Gate 3: Does browser support Notifications API?
+  if (!('Notification' in window)) {
+    console.error('❌ Notification API not supported in this browser');
+    return;
+  }
+  console.log('✅ Notification API supported');
+
+  // Gate 4: What's the current permission state?
+  const perm = Notification.permission;
+  console.log('🔍 Notification.permission =', perm);
+
+  // ✅ NEW: MISMATCH DETECTION
+  if (configData.push_status === 'missing' && perm === 'granted') {
+    console.log('⚠️ Push mismatch: Browser granted, backend missing. Forcing re-register prompt.');
+    localStorage.removeItem('push_opted');
+    localStorage.removeItem(PUSH_LATER_KEY);
+    showPushModal(true);
+    console.log('🔚 initPushFlow() END (mismatch recovery)');
+    return;
+  }
+
+  // --- existing logic ---
+  if (perm === 'granted') {
+    console.log('✅ Permission granted — attempting silent registration...');
+    try {
+      await registerPush();
+      console.log('✅ registerPush() completed');
+    } catch (e) {
+      console.error('💥 registerPush() threw error:', e.message);
+      setTimeout(() => showPushModal(true), 1000);
+    }
+  }
+  else if (perm === 'default') {
+    console.log('⏳ Permission undecided — scheduling modal in 1.5s...');
+    setTimeout(() => {
+      console.log('⏰ showPushModal() triggered');
+      showPushModal(false);
+    }, 1500);
+  }
+  else if (perm === 'denied') {
+    console.log('🚫 Permission denied — will not prompt again');
+  }
+
+  console.log('🔚 initPushFlow() END');
+}
+
+//  app flow
+async function initApp() {
+    $('login').classList.add('hidden');
+    const ctrl = $('controls');
+    ctrl.style.display = 'grid';
+    ctrl.innerHTML = '';
+
+    const callBtn = document.createElement('button');
+    callBtn.id = 'callBtn';
+    callBtn.className = 'btn-call';
+    callBtn.innerHTML = '📞 CALL';
+    callBtn.onclick = startCall;
+    ctrl.appendChild(callBtn);
+
+    configData.actions.forEach(action => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-action';
+        btn.innerHTML = `${action.icon} ${action.label}`;
+        btn.onclick = () => runAction(action);
+        ctrl.appendChild(btn);
+    });
+
+    const hangBtn = document.createElement('button');
+    hangBtn.id = 'hangupBtn';
+    hangBtn.className = 'btn-hangup';
+    hangBtn.innerHTML = '📴 END';
+    hangBtn.onclick = hangup;
+    ctrl.appendChild(hangBtn);
+
+    loadWebRTC(configData.video.name);
+    setTimeout(setupSIP, 500);
+
+    // 🔔 PUSH: Auto-flow + orphan recovery
+    initPushFlow();
+}
+
 </script>
 </body>
 </html>
