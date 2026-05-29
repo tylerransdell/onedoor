@@ -1,11 +1,11 @@
 ####OneDoor unified docker config - bind to /app/config.yaml
-domain: #required domain name
-docker_host: #required local ip
+domain: #required domain name example "door.domain.com"
+docker_host: #required local ip example "192.168.1.101"
 
 
 go2rtc:
   simple_mode: #true please
-  camera: #url for your camera feed
+  camera: #url for your camera feed 
 
 onedoor:
   simple_mode: #true please
