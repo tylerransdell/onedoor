@@ -1,12 +1,16 @@
 # OneDoor 🚪  
 
-OneDoor is an **ultra‑fast, clean, and tactically designed** door communication app built to be the perfect door‑notification target.
-Tap a notification and you’re at your door in **under one second** — with instant WebRTC video and full‑duplex SIP audio. If the app ever loses scope of the scene, your next step (another door, your NVR, or any external system) is always **one button away**.
+NVRs are great at recording, tracking, and reviewing events — even several at once.
+
+OneDoor is something completely different.
+
+OneDoor is built for **tactical‑speed door awareness**: the fastest possible video, the fastest possible audio, and instant control of your entryway. It’s the perfect real‑time notification target.
+
+Tap a notification and you’re at your door in under a second, with **instant WebRTC video** and **full‑duplex SIP audio**. If the app ever loses scope of the scene, your next step (another door, your NVR, or any external system) is always one button away.
 
 It plays beautifully with NVRs, home automation systems, and professional SIP door stations — without forcing you to learn telecom internals.
 
-Build 030 introduces a **single unified container** that assembles the entire intercom system for you:
-Asterisk, go2rtc, WebRTC, SIP, DTLS, websocket routing, backend, frontend, and all key generation — fused into one appliance‑grade package.
+Build 030 introduced a single unified container that assembles the entire intercom system for you: Asterisk, go2rtc, WebRTC, SIP, DTLS, websocket routing, backend, frontend, and all key generation — fused into one appliance‑grade package.
 
 You provide only:
 
@@ -16,8 +20,8 @@ You provide only:
 
 …and OneDoor builds the whole stack automatically.
 
-The goal: **a clean, ultra‑fast door application that works seamlessly with your NVR and automation stack.**
-Modern, reliable, and tuned to outperform anything in its class.
+The goal: a clean, ultra‑fast door application that works seamlessly with your NVR and automation stack. Modern, reliable, and tuned to outperform anything in its class.
+
 
 ---
 
