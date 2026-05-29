@@ -4,26 +4,19 @@ This guide outlines OneDoor’s security model, token handling, deployment steps
 
 ---
 
-## 1. Security Architecture
+# 1. Security Model
 
-OneDoor treats the browser as untrusted. Sensitive data stays server‑side, and the frontend receives only what it needs. This ensures the client JWT never appears in URLs, browser storage, WebSocket query strings, or any common logging surface.
+## 1.1 Public → OneDoor
+- App requires **TLS**
+- All app routes and API endpoints sit **behind a JWT auth token**
+- Nothing loads or streams without a valid JWT
 
-### 1.1 Webhook Secret Isolation
-
-- `parser.py` loads `config.yaml` and maps actions into `onedoor.yaml`.
-- Webhook destinations and secrets are removed before anything reaches the UI.
-- The frontend receives only a minimal action descriptor, for example:
-  `{ "id": 1, "label": "Gate Trigger", "type": "hook", "icon": "0" }`
-- When triggered, the client sends only `actionId` to `/api/action`.
-- The backend resolves the ID and performs the outbound request internally.
-
-### 1.2 Split‑Token WebSocket Signaling
-
-- The backend issues two tokens:
-  - API JWT for REST
-  - ws_token for WebSocket upgrades
-- The API JWT never enters logs, URLs, or browser‑visible surfaces.
-- The ws_token is limited‑scope and valid only for SIP signaling with both auth and containment.
+## 1.2 Clients → Internal Services
+- WebSocket upgrades never expose the JWT; OneDoor uses a **separate random upgrade token** for Asterisk
+- If the Asterisk token leaks, it only reaches an already‑secured internal endpoint
+- Webhooks often contain secrets, so clients only receive a **webhook ID** — the real webhook URL stays **100% local**
+- Notification subsystem only accepts **local webhook triggers**; users cannot access the notification endpoint
+- go2rtc API now only allows **ffmpeg** as an executable target (no arbitrary commands)
 
 ---
 
@@ -102,17 +95,10 @@ Required SIP configuration:
 
 - v031 — Baselines + documentation
 - v032 — Added frontend link actions (`hook`, `dtmf`, `link`)
-- v034 — VAPID push notifications for physical button presses
-- v035+ - manager.py to help keep confbridge clean. UI improvements.
+- v034 — VAPID push notifications for physical button presses, lanscape real estate improved but buttons still messy.
+- v036+ - manager.py to help keep confbridge clean. UI improvements.
 
-### 4.2 Ongoing Work
-
-- Dialplan still needs cleanup.
-- Rare case: a user may remain in a call group if their WebSocket drops mid‑call - may require manager.py.
-- Common case: intercom call will push to group - will be fixed with notification logic.
-- Neither case seems to break any functionality but both are messy.
-
-### 4.3 Multi‑Door Support
+### 4.2 Multi‑Door Support
 
 Planned after the single‑door experience is fully polished.
 

@@ -71,6 +71,11 @@ if go2rtc_simple:
         'ice_lite': False
     }
     g_config['rtsp'] = {'backchannel': True}
+
+    g_config['exec'] = {
+        'allow_paths': ['ffmpeg']
+    }
+
     write_yaml(GO2RTC_DEST, g_config)
 
 # 3. ONEDOOR & PBX PARSING

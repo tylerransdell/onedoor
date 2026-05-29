@@ -13,3 +13,6 @@ webrtc:
 
 rtsp:
   backchannel: true #these settings help speed up rtsp, optional.
+
+exec:
+  allow_paths: [ffmpeg]
