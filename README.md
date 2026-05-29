@@ -51,7 +51,7 @@ The goal: a clean, ultra‑fast door application that works seamlessly with your
 
 ## ❤️ Why OneDoor Exists
 
-Professional-grade, tactical-speed door communication shouldn’t require telecom expertise.
+Take control of your door. Tactical‑speed door communication and control shouldn’t require telecom experience or fighting through some weird, locked‑down, enterprise‑grade maze designed to keep you dependent on their ecosystem.
 
 OneDoor exists to make **professional‑grade door communication simple, fast, private, and modern** — while staying fully local, fully open, and fully in your control.
 
