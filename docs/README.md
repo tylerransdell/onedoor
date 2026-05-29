@@ -77,7 +77,8 @@ For even lower latency video, use ffmpeg inside go2rtc:
 ```
 streams:
   camera1:
-    - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#rtsp_transport=udp&client_port=20300"```
+    - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#rtsp_transport=udp&client_port=20300"
+```
 Then bind this additional media port /udp in compose.
 
 ### 3.2 SIP Endpoints
