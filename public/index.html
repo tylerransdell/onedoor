@@ -18,11 +18,11 @@
     <style>
         :root { --bg: #000; --panel: #1a1a1a; --green: #22c55e; --red: #ef4444; --text: #fff; --blue: #3b82f6; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
+
         body {
             font-family: -apple-system, system-ui, sans-serif;
             background: var(--bg); color: var(--text);
-            height: 100dvh; 
+            height: 100dvh;
             overflow: hidden;
             position: relative;
             backface-visibility: hidden;
@@ -43,8 +43,6 @@
             padding: 12px;
             transition: none;
             will-change: transform;
-            align-items: stretch;
-            justify-items: stretch;
         }
 
         @media (orientation: portrait) {
@@ -59,28 +57,30 @@
         }
 
         @media (orientation: landscape) {
+            #video-container { right: 25vw; left: 0; }
             #controls {
                 top: 0; bottom: 0; right: 0;
-                width: 80px;
-                padding-top: 12px;
-                padding-bottom: 12px;
+                width: 25vw; /* Stretches 25% of the screen */
+                padding: 20px;
                 display: grid;
                 grid-auto-flow: row;
                 grid-auto-rows: 1fr;
+                gap: 15px;
+                align-items: stretch; /* Forces buttons to fill width */
             }
         }
 
-        button { 
+        button {
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px; 
-            border: none; 
-            font-weight: 600; 
-            font-size: 14px; 
-            cursor: pointer; 
-            color: #fff; 
-            white-space: nowrap; 
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            color: #fff;
+            white-space: nowrap;
             overflow: hidden;
         }
         .btn-call { background: var(--green); }
