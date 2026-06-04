@@ -22,4 +22,3 @@ COPY . .
 RUN chmod +x /app/keys.sh /app/entrypoint.sh /app/doorbell-webhook.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-

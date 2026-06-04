@@ -1,37 +1,37 @@
-####OneDoor unified docker config - bind to /app/config.yaml
-domain: #required domain name example "door.domain.com"
-docker_host: #required local ip example "192.168.1.101"
+# ==============================================================================
+# MASTER CONFIGURATION
+# ==============================================================================
+domain:  # "door.yourdomain.com"
+docker_host: # "192.168.1.26"
 
-
-go2rtc:
-  simple_mode: #true please
-  camera: #url for your camera feed 
-
+# Global settings for the app and authentication
 onedoor:
-  simple_mode: #true please
-  token_expiry_days: #default 30, 1-400 allowed.
+  token_expiry_days: 30 #default 30
   users:
-    - username:
-      password_hash: #use makepass.example one-liner
-    - username: #1-99 users allowed
+    - username: #"first_user"
+      password_hash: #use makepass.example
+    - username: #"second_user" can add more
       password_hash:
-  actions: # up to two actions. can be same type. slightly different format per type. 
-    - id: #placeholer string
-      label: #name on button
-      type: #"hook" "link" or "dtmf"
-      icon: #icon
-      url: #url for "hook" or "link", payload: for "dtmf"
-  notifications: #enable by binding /vapid in docker-compose.yml
-    snooze_all: 90 #seconds to snooze all notifications after one is sent
-    snooze_same: 120 #for identical notifications if using multiple notifiers.
+  notifications: #bind /vapid to enable notifications no data goes here
+    snooze_all: 120 #snooze seconds after any notification sent
+    snooze_same: 120 #cooldown for identical notifications
 
-pbx:
-  simple_mode: #true please
-
-# WARNING-Switching from advanced to simple mode with active rw binds will wipe your configs.
-# simple_mode: false means that you must bind your own configs to:
-# /config/go2rtc.yaml /app/onedoor.yaml and /etc/asterisk/
-# advanced mode will also disable automatic dtls key gens for pbx.
-# using advanced mode for either onedoor or pbx means you MUST use it for both.
-# go2rtc advanced mode can be used without needing advanced onedoor or pbx.
-# simple_mode intercom is 105:one2345door auto answer = on
+# Door definitions - List order determines extension: 700, 702, 704...
+moredoors:
+  - id: #"front"
+    call_mode: #"sip" - sip, generic, or none. see docs.
+    camera: #"rtsp://192.168.1.31:554/frontsubsmall"
+    actions:
+      - id: #"front_light" - generic id
+        label: #"light" - this is button text
+        type: #"hook" hook, dtmf, or link
+        url: #"http://192.168.1.66/light" - url for hook or link, payload for dtmf 
+        icon: #"🔆" - icon on button
+      - id: #"front_lock" - remove unused or add more.
+        label: #"Unlock"
+        type: #"dtmf"
+        payload: #"1234"
+        icon: #"🔒"
+# - id: "side" - camera/door list works like this
+#   call_mode:
+#   camera:
