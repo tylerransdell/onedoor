@@ -62,42 +62,50 @@
             position: fixed;
             z-index: 1000;
             background: var(--panel);
-            gap: 8px;
+            gap: 10px;
             padding: 12px;
             transition: none;
             will-change: transform;
         }
 
+        /* Portrait: Buttons fill the bar width */
         @media (orientation: portrait) {
             #controls {
                 bottom: 0; left: 0; right: 0;
-                min-height: 90px;
-                padding: 12px 12px 24px 12px;
+                height: 80px;
+                padding: 10px;
                 display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                justify-content: space-between;
                 align-items: center;
+                overflow: hidden;
             }
-            #controls button { flex: 1 1 40%; max-width: 200px; }
+            #controls button {
+                flex: 1;
+                min-width: 0;
+                max-width: none;
+            }
         }
 
+        /* Landscape: 150% width stretch toward center */
         @media (orientation: landscape) {
             #video-container { right: 25vw; left: 0; }
             #controls {
                 top: 0; bottom: 0; right: 0;
                 width: 25vw;
-                padding: 10px;
+                padding: 15px;
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
                 align-items: center;
                 justify-content: center;
             }
             #controls button {
-                width: 225%;
-                height: 60px;
-                font-size: 16px;
-                margin-left: -125%;
+                width: 150%;
+                height: 48px;
+                margin-left: -25%;
+                flex: none;
             }
         }
 
