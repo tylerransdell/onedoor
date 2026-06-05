@@ -88,11 +88,12 @@ Suggested sub‑stream profile for sub-second response:
 - Bitrate: CBR
 - Keyframe interval: 1 FPS (GOP = FPS)
 
-For even lower latency video, use ffmpeg inside go2rtc:
+- moredoors branch now buffers streams so even some lower quality cameras can get a realtime experience but not all of them.
+
+IMPORTANT for faster feeling video, use #gop=1 tag:
 ```
-streams:
-  camera1:
-    - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#rtsp_transport=udp&client_port=20300"
+camera:
+  - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#gop=1"
 ```
 Then bind this additional media port /udp in compose.
 
@@ -144,6 +145,7 @@ Notes:
 v040+ — Multi‑Door Expansion
   - Added support for more doors
   - Added support for non-SIP doors in cluding generic and no 2-way at all.
+  - super fast custom go2rtc build
 
 ### 4.2 Multi‑Door Support
 
@@ -154,7 +156,7 @@ Each door has:
   - Independent button‑press routing
   - Independent notification deep links
   - Independent action sets
-
+  - Now even lower latency so even swiping feels fast.
 ---
 
 # 5. Notifications

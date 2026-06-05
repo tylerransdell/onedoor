@@ -10,7 +10,7 @@ Tap a notification and you’re at your door in under a second, with instant Web
 
 It plays beautifully with NVRs, home automation systems, and professional SIP door stations — without forcing you to learn telecom internals.
 
-The v040 series respects the ultra‑simple legacy SIP‑only config (non‑breaking), but introduces a powerful yet self‑explanatory unified configuration that supports single‑door or multi‑door setups with ease. SIP remains the recommended best experience, but OneDoor now works beautifully across multiple call modes and device types.
+The v040 series respects the ultra‑simple legacy SIP‑only config (non‑breaking), but introduces a powerful yet self‑explanatory unified configuration that supports single‑door or multi‑door setups with ease. SIP remains the recommended best experience, but OneDoor now works across multiple call modes and device types.
 
 The result is a clean, ultra‑fast door application that works seamlessly with your NVR and automation stack — modern, reliable, and tuned to outperform anything in its class.
 
@@ -49,10 +49,10 @@ The result is a clean, ultra‑fast door application that works seamlessly with 
 
 ## ❤️ Why OneDoor Exists
 
-OneDoor set out to solve the problem that NVRs never could: the speed gap between a doorbell event and your ability to act on it. Recording is useful later — but the moment that matters is the one happening right now.
+OneDoor set out to solve the problem that NVRs can not address: the speed gap between a doorbell event and your ability to act on it in the seconds that matter.
 
-As OneDoor evolved, the real power became clear: real‑time actions.  
-That’s what drove the expansion to more doors, more modes, and per‑door control surfaces.
+As OneDoor evolved, the real power became clear: real‑time actions.
+That’s what drove the expansion to more doors, more modes, more per‑door control surfaces, and more welcomed hardware.
 
 OneDoor is the app that captures the seconds that actually matter between notification and engagement.  
 It can welcome guests, de‑escalate trouble, and give you real‑time control faster than anything else in its class — all while staying fully local, fully open, and fully in your hands.

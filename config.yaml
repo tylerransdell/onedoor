@@ -20,7 +20,7 @@ onedoor:
 moredoors:
   - id: #"front"
     call_mode: #"sip" - sip, generic, or none. see docs.
-    camera: #"rtsp://192.168.1.31:554/frontsubsmall"
+    camera: #"rtsp://192.168.1.31:554/frontsubsmall#gop=1" string or list as per go2rtc  
     actions:
       - id: #"front_light" - generic id
         label: #"light" - this is button text
@@ -32,6 +32,6 @@ moredoors:
         type: #"dtmf"
         payload: #"1234"
         icon: #"🔒"
-# - id: "side" - camera/door list works like this
+# - id: "side" - more camera/door list works like this
 #   call_mode:
 #   camera:
