@@ -70,7 +70,7 @@ Notes:
   - generic and none both rely on the video channel for audio (if present).
   - sip remains the recommended mode for devices that support it.
   - advantage of generic or none is audio plays immediately. 
-  - advantage of SIP is audio is actually good.
+  - advantage of SIP is audio is actually good and multiple users get mic access without breaking.
 
 ---
 
