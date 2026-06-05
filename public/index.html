@@ -31,42 +31,81 @@
         #video-container {
             position: absolute; inset: 0; background: #000;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
+            touch-action: pan-y;
         }
         video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+
+        #door-title {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
+            font-size: 14px; font-weight: 600; z-index: 50; pointer-events: none;
+            text-transform: capitalize; white-space: nowrap;
+        }
+
+        .nav-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(0,0,0,0.5); color: #fff; font-size: 24px;
+            width: 40px; height: 80px; display: none;
+            align-items: center; justify-content: center;
+            cursor: pointer; z-index: 50; border-radius: 8px;
+            user-select: none;
+        }
+        #nav-left { left: 10px; }
+        #nav-right { right: 10px; }
+
+        @media (hover: hover) and (pointer: fine) {
+            .nav-arrow { display: flex; }
+        }
 
         #controls {
             display: none;
             position: fixed;
             z-index: 1000;
             background: var(--panel);
-            gap: 8px;
+            gap: 10px;
             padding: 12px;
             transition: none;
             will-change: transform;
         }
 
+        /* Portrait: Buttons fill the bar width */
         @media (orientation: portrait) {
             #controls {
                 bottom: 0; left: 0; right: 0;
-                height: 72px;
-                padding-bottom: 18px;
-                display: grid;
-                grid-auto-flow: column;
-                grid-auto-columns: 1fr;
+                height: 80px;
+                padding: 10px;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                justify-content: space-between;
+                align-items: center;
+                overflow: hidden;
+            }
+            #controls button {
+                flex: 1;
+                min-width: 0;
+                max-width: none;
             }
         }
 
+        /* Landscape: 150% width stretch toward center */
         @media (orientation: landscape) {
             #video-container { right: 25vw; left: 0; }
             #controls {
                 top: 0; bottom: 0; right: 0;
-                width: 25vw; /* Stretches 25% of the screen */
-                padding: 20px;
-                display: grid;
-                grid-auto-flow: row;
-                grid-auto-rows: 1fr;
-                gap: 15px;
-                align-items: stretch; /* Forces buttons to fill width */
+                width: 25vw;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                align-items: center;
+                justify-content: center;
+            }
+            #controls button {
+                width: 150%;
+                height: 48px;
+                margin-left: -25%;
+                flex: none;
             }
         }
 
@@ -81,7 +120,8 @@
             cursor: pointer;
             color: #fff;
             white-space: nowrap;
-            overflow: hidden;
+            height: 48px;
+            width: 100%;
         }
         .btn-call { background: var(--green); }
         .btn-hangup { background: var(--red); display: none; }
@@ -98,6 +138,10 @@
 <body>
 
 <div id="status">OFFLINE</div>
+<div id="door-title">Loading...</div>
+
+<div id="nav-left" class="nav-arrow" onclick="prevDoor()">❮</div>
+<div id="nav-right" class="nav-arrow" onclick="nextDoor()">❯</div>
 
 <div id="video-container">
     <video id="video" autoplay playsinline muted></video>
@@ -123,38 +167,108 @@
 
 <script>
 let ua, session, videoPC, configData;
+let doors = [];
+let currentDoorIndex = 0;
+let currentDoor = null;
+let localStream = null; // For Generic mode mic
+
 const API = window.location.origin;
 const $ = id => document.getElementById(id);
 const setStatus = t => { $('status').textContent = t.toUpperCase(); };
 
 function unmuteAudio() {
-    $('remoteAudio').play();
+    if (currentDoor?.call_mode === 'sip') {
+        $('remoteAudio').play();
+    } else {
+        $('video').muted = false;
+        $('video').play();
+    }
     $('audio-blocker').style.display = 'none';
 }
 
-// --- 1. VIDEO LOGIC (Status Cleaned) ---
-async function loadWebRTC(name) {
-    if (videoPC) videoPC.close(); // Prevent ghost connections on refresh
+// --- NAVIGATION ---
+function nextDoor() {
+    if (doors.length === 0) return;
+    currentDoorIndex = (currentDoorIndex + 1) % doors.length;
+    renderDoor();
+}
+
+function prevDoor() {
+    if (doors.length === 0) return;
+    currentDoorIndex = (currentDoorIndex - 1 + doors.length) % doors.length;
+    renderDoor();
+}
+
+// Swipe support
+let touchStartX = 0;
+$('video-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, { passive: true });
+$('video-container').addEventListener('touchend', e => {
+    const endX = e.changedTouches[0].screenX;
+    const diff = touchStartX - endX;
+    if (Math.abs(diff) > 50) {
+        if (diff > 0) nextDoor(); else prevDoor();
+    }
+}, { passive: true });
+
+// --- MEDIA LOGIC (go2rtc) ---
+async function loadMedia(door) {
+    if (videoPC) videoPC.close();
     
+    // Reset UI state for new door
+    $('video').muted = true; 
+    $('video').srcObject = null;
+    $('remoteAudio').srcObject = null;
+
     videoPC = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
     videoPC.ontrack = e => {
         if (e.streams[0]) {
-            console.log("Video track received from go2rtc");
             const v = $('video');
             v.srcObject = e.streams[0];
-            v.play().catch(err => console.warn("Video playback pending interaction"));
+            
+            // Auto-unmute for 'none' and 'generic' (video carries audio)
+            if (door.call_mode === 'none' || door.call_mode === 'generic') {
+                v.muted = false;
+                v.play().catch(err => console.warn("Video play pending interaction"));
+            } else {
+                v.play().catch(() => {});
+            }
         }
     };
 
     videoPC.addTransceiver('video', { direction: 'recvonly' });
-    videoPC.addTransceiver('audio', { direction: 'inactive' });
+
+    // Audio handling based on mode
+    if (door.call_mode === 'sip') {
+        videoPC.addTransceiver('audio', { direction: 'inactive' });
+    } 
+    else if (door.call_mode === 'generic') {
+        // Two-way audio. We need to add local mic track if available.
+        if (!localStream) {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Mute by default until "Call" is pressed
+                localStream.getAudioTracks().forEach(t => t.enabled = false);
+            } catch (e) {
+                console.warn("Mic permission denied. Falling back to listen-only.");
+            }
+        }
+        
+        if (localStream) {
+            localStream.getTracks().forEach(track => videoPC.addTrack(track, localStream));
+        } else {
+            videoPC.addTransceiver('audio', { direction: 'recvonly' });
+        }
+    } 
+    else { // 'none'
+        videoPC.addTransceiver('audio', { direction: 'recvonly' });
+    }
 
     try {
         const offer = await videoPC.createOffer();
         await videoPC.setLocalDescription(offer);
 
-        const res = await fetch(`${API}/go2rtc/api/webrtc?src=${encodeURIComponent(name)}`, {
+        const res = await fetch(`${API}/go2rtc/api/webrtc?src=${encodeURIComponent(door.webrtc_name)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain',
@@ -171,7 +285,7 @@ async function loadWebRTC(name) {
     }
 }
 
-// --- 2. SIP LOGIC ---
+// --- SIP LOGIC ---
 function setupSIP() {
     const wsUrl = `wss://${location.host}/ws?ws_token=${encodeURIComponent(configData.ws_token)}`;
     const socket = new JsSIP.WebSocketInterface(wsUrl);
@@ -213,8 +327,7 @@ function handleSession() {
     });
 
     session.on('confirmed', () => {
-        $('callBtn').style.display = 'none';
-        $('hangupBtn').style.display = 'block';
+        updateCallButton(true);
         setStatus('IN CALL');
         setTimeout(attachTrack, 100);
     });
@@ -224,31 +337,113 @@ function handleSession() {
 }
 
 function startCall() {
-    if (!ua || !ua.isRegistered()) {
-        setStatus("NOT READY");
-        return;
+    if (!currentDoor) return;
+
+    if (currentDoor.call_mode === 'sip') {
+        if (!ua || !ua.isRegistered()) { setStatus("NOT READY"); return; }
+        const options = {
+            mediaConstraints: { audio: true, video: false },
+            pcConfig: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+        };
+        ua.call(`sip:${currentDoor.dial_extension}@${location.hostname}`, options);
+    } 
+    else if (currentDoor.call_mode === 'generic') {
+        toggleMic(true);
     }
-    const options = {
-        mediaConstraints: { audio: true, video: false },
-        pcConfig: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-    };
-    ua.call(`sip:${configData.pbx.dial_extension}@${location.hostname}`, options);
 }
 
-function hangup() { session?.terminate(); }
+function hangup() {
+    if (currentDoor?.call_mode === 'sip') {
+        session?.terminate();
+    } else if (currentDoor?.call_mode === 'generic') {
+        toggleMic(false);
+    }
+}
+
+function toggleMic(forceState) {
+    if (!localStream) return;
+    const track = localStream.getAudioTracks()[0];
+    if (!track) return;
+
+    const newState = forceState !== undefined ? forceState : !track.enabled;
+    track.enabled = newState;
+    updateCallButton(newState);
+    setStatus(newState ? 'MIC ON' : 'MIC OFF');
+}
+
+function updateCallButton(isActive) {
+    const callBtn = $('callBtn');
+    const hangBtn = $('hangupBtn');
+    if (!callBtn || !hangBtn) return;
+
+    if (isActive) {
+        callBtn.style.display = 'none';
+        hangBtn.style.display = 'flex';
+    } else {
+        callBtn.style.display = 'flex';
+        hangBtn.style.display = 'none';
+    }
+}
+
 function resetUI() {
-    if ($('callBtn')) $('callBtn').style.display = 'block';
-    if ($('hangupBtn')) $('hangupBtn').style.display = 'none';
+    updateCallButton(false);
     $('audio-blocker').style.display = 'none';
     setStatus('READY');
 }
 
-// --- 3. ACTION LOGIC ---
+// --- RENDER DOOR ---
+function renderDoor() {
+    if (!doors.length) return;
+    currentDoor = doors[currentDoorIndex];
+    
+    // Update Title
+    $('door-title').textContent = currentDoor.id.replace(/_/g, ' ');
+
+    // Update Controls
+    const ctrl = $('controls');
+    ctrl.innerHTML = '';
+
+    // 1. Call/End Button (SIP & Generic only)
+    if (currentDoor.call_mode === 'sip' || currentDoor.call_mode === 'generic') {
+        const callBtn = document.createElement('button');
+        callBtn.id = 'callBtn';
+        callBtn.className = 'btn-call';
+        callBtn.innerHTML = currentDoor.call_mode === 'sip' ? '📞 CALL' : '🎙️ TALK';
+        callBtn.onclick = startCall;
+        ctrl.appendChild(callBtn);
+
+        const hangBtn = document.createElement('button');
+        hangBtn.id = 'hangupBtn';
+        hangBtn.className = 'btn-hangup';
+        hangBtn.innerHTML = '📴 END';
+        hangBtn.onclick = hangup;
+        ctrl.appendChild(hangBtn);
+    }
+
+    // 2. Actions
+    (currentDoor.actions || []).forEach(action => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-action';
+        btn.innerHTML = `${action.icon || '⚡'} ${action.label}`;
+        btn.onclick = () => runAction(action);
+        ctrl.appendChild(btn);
+    });
+
+    // 3. Load Media
+    loadMedia(currentDoor);
+    
+    // Reset UI state
+    resetUI();
+}
+
+// --- ACTION LOGIC ---
 async function runAction(action) {
     if (action.type === 'dtmf') {
-        if (session) {
+        if (currentDoor.call_mode === 'sip' && session) {
             session.sendDTMF(action.payload);
             setStatus(`SENT: ${action.payload}`);
+        } else if (currentDoor.call_mode === 'generic') {
+             setStatus('DTMF N/A'); // go2rtc doesn't support DTMF via API easily in this context
         }
     } else if (action.type === 'hook') {
         setStatus('SENDING...');
@@ -258,22 +453,16 @@ async function runAction(action) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${configData.token}`
             },
-            body: JSON.stringify({ actionId: action.id })
+            body: JSON.stringify({ doorId: currentDoor.id, actionId: action.id })
         });
         if (res.ok) setStatus('SUCCESS');
-    } 
-    // ADD: Handle the local redirection directly from client context
-    else if (action.type === 'link') {
-        if (action.url) {
-            window.location.href = action.url;
-            return; // Exit early so the status timeout doesn't fire as the page unloads
-        } else {
-            setStatus('LINK ERR');
-        }
+    } else if (action.type === 'link') {
+        if (action.url) window.location.href = action.url;
     }
     setTimeout(() => setStatus(session?.isEstablished() ? 'IN CALL' : 'READY'), 2000);
 }
 
+// --- AUTH & INIT ---
 async function doLogin(event) {
     event.preventDefault();
     const u = $('username').value, p = $('password').value;
@@ -293,87 +482,68 @@ async function doLogin(event) {
 window.onload = () => {
     const token = localStorage.getItem('jwt');
     if (token) {
-        fetch(`${API}/api/verify`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        })
+        fetch(`${API}/api/verify`, { headers: { 'Authorization': 'Bearer ' + token } })
         .then(res => res.json())
         .then(data => {
-            if (data.valid) {
-                configData = data;
-                initApp();
-            }
+            if (data.valid) { configData = data; initApp(); }
         }).catch(() => localStorage.removeItem('jwt'));
     }
 };
 
-// --- PUSH OPT-IN (Zero UI Impact + Orphan Recovery) ---
+async function initApp() {
+    $('login').classList.add('hidden');
+    $('controls').style.display = 'flex'; // Or grid, handled by CSS
+    
+    doors = configData.doors || [];
+    if (doors.length === 0) {
+        alert("No doors configured.");
+        return;
+    }
+
+    // Deep Link Handling
+    const params = new URLSearchParams(window.location.search);
+    const targetDoorId = params.get('door');
+    if (targetDoorId) {
+        const idx = doors.findIndex(d => d.id === targetDoorId);
+        if (idx !== -1) currentDoorIndex = idx;
+    }
+
+    renderDoor();
+    setupSIP(); // Init SIP UA once
+    initPushFlow();
+}
+
+// ... [Keep Push Logic exactly as before] ...
 const PUSH_LATER_KEY = 'onedoor_push_later';
 const PUSH_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function urlBase64ToUint8Array(base64url) {
-  // 1. Convert base64url to standard base64 FIRST
   let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  
-  // 2. Add padding if needed
   const pad = (4 - base64.length % 4) % 4;
   base64 += '='.repeat(pad);
-  
-  // 3. NOW safely decode
   const binary = atob(base64);
-  
-  // 4. Convert to Uint8Array
   return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
 }
 
 async function registerPush() {
-  console.log('🔧 registerPush() called');
-  
-  if (!configData?.vapid_public_key) {
-    console.error('❌ No VAPID key');
-    return;
-  }
-  
+  if (!configData?.vapid_public_key) return;
   try {
-    console.log('🔍 Getting service worker...');
-    const reg = await navigator.serviceWorker.getRegistration('/') || 
-                await navigator.serviceWorker.register('/service-worker.js');
-    console.log('✅ SW registered:', reg.scope);
-    
-    console.log('🔍 Getting subscription...');
+    const reg = await navigator.serviceWorker.getRegistration('/') || await navigator.serviceWorker.register('/service-worker.js');
     let sub = await reg.pushManager.getSubscription();
-    console.log('📦 Existing subscription:', sub ? 'YES' : 'NO');
-    
     if (!sub) {
-      console.log('🔔 Creating new subscription...');
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(configData.vapid_public_key)
-      });
-      console.log('✅ Subscription created');
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(configData.vapid_public_key) });
     }
-    
-    console.log('📡 POSTing to backend...');
-    const res = await fetch(`${location.origin}/api/register-notification`, {
+    await fetch(`${location.origin}/api/register-notification`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${configData.token}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${configData.token}` },
       body: JSON.stringify({ subscription: sub.toJSON() })
     });
-    
-    console.log('📡 HTTP Status:', res.status, res.statusText);
-    const data = await res.json();
-    console.log('🔔 Backend response:', data);
-    
-  } catch(e) {
-    console.error('💥 registerPush() error:', e.name, e.message);
-  }
+  } catch(e) { console.error('Push Reg Error:', e); }
 }
 
 function showPushModal(force = false) {
   if (!configData?.vapid_public_key) return;
-  if (!force && Notification.permission !== 'default') return; // Skip gate unless forced
+  if (!force && Notification.permission !== 'default') return;
   if (!force && Date.now() - parseInt(localStorage.getItem(PUSH_LATER_KEY) || '0') < PUSH_WEEK_MS) return;
   if (!force && localStorage.getItem('push_opted') === 'denied') return;
 
@@ -381,25 +551,23 @@ function showPushModal(force = false) {
   const msg = force ? "Tap to restore instant door alerts." : "Tap to open when someone rings.";
 
   const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity 0.2s;';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   el.innerHTML = `
-    <div style="background:#111;border:1px solid #333;border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+    <div style="background:#111;border:1px solid #333;border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center;">
       <div style="font-size:24px;margin-bottom:8px;">🔔</div>
-      <h3 style="margin:0 0 6px;font-size:16px;color:#fff;">${title}</h3>
-      <p style="margin:0 0 16px;font-size:13px;color:#999;line-height:1.4;">${msg}</p>
+      <h3 style="margin:0 0 6px;font-size:16px;">${title}</h3>
+      <p style="margin:0 0 16px;font-size:13px;color:#999;">${msg}</p>
       <div style="display:flex;gap:10px;">
-        <button id="push-allow" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;font-size:14px;cursor:pointer;">Allow</button>
-        ${!force ? `<button id="push-later" style="flex:1;padding:10px;border:none;border-radius:8px;background:#222;color:#aaa;font-weight:600;font-size:14px;cursor:pointer;">Ask Later</button>` : ''}
+        <button id="push-allow" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;">Allow</button>
+        ${!force ? `<button id="push-later" style="flex:1;padding:10px;border:none;border-radius:8px;background:#222;color:#aaa;font-weight:600;">Later</button>` : ''}
       </div>
     </div>`;
   document.body.appendChild(el);
-  requestAnimationFrame(() => el.style.opacity = '1');
 
   document.getElementById('push-allow').onclick = async () => {
     el.remove();
-    await Notification.requestPermission(); // Returns 'granted' instantly if already allowed
+    await Notification.requestPermission();
     localStorage.setItem('push_opted', 'allowed');
-    localStorage.removeItem(PUSH_LATER_KEY);
     registerPush();
   };
 
@@ -411,106 +579,23 @@ function showPushModal(force = false) {
   }
 }
 
-//  REPLACES initApp() PUSH CALL:
 async function initPushFlow() {
-  console.log('🔥 initPushFlow() START');
+  if (!configData?.vapid_public_key) return;
+  if (!('Notification' in window)) return;
 
-  // Gate 1: Do we have config?
-  if (!configData) {
-    console.error('❌ configData is undefined — initPushFlow() called too early?');
-    return;
-  }
-  console.log('✅ configData exists');
-
-  // Gate 2: Is push enabled on server?
-  if (!configData.vapid_public_key) {
-    console.log('⚠️ configData.vapid_public_key is null/undefined — push disabled on server');
-    return;
-  }
-  console.log('✅ VAPID public key present:', configData.vapid_public_key.substring(0,20) + '...');
-
-  // Gate 3: Does browser support Notifications API?
-  if (!('Notification' in window)) {
-    console.error('❌ Notification API not supported in this browser');
-    return;
-  }
-  console.log('✅ Notification API supported');
-
-  // Gate 4: What's the current permission state?
   const perm = Notification.permission;
-  console.log('🔍 Notification.permission =', perm);
-
-  // ✅ NEW: MISMATCH DETECTION
   if (configData.push_status === 'missing' && perm === 'granted') {
-    console.log('⚠️ Push mismatch: Browser granted, backend missing. Forcing re-register prompt.');
     localStorage.removeItem('push_opted');
-    localStorage.removeItem(PUSH_LATER_KEY);
     showPushModal(true);
-    console.log('🔚 initPushFlow() END (mismatch recovery)');
     return;
   }
 
-  // --- existing logic ---
   if (perm === 'granted') {
-    console.log('✅ Permission granted — attempting silent registration...');
-    try {
-      await registerPush();
-      console.log('✅ registerPush() completed');
-    } catch (e) {
-      console.error('💥 registerPush() threw error:', e.message);
-      setTimeout(() => showPushModal(true), 1000);
-    }
+    await registerPush();
+  } else if (perm === 'default') {
+    setTimeout(() => showPushModal(false), 1500);
   }
-  else if (perm === 'default') {
-    console.log('⏳ Permission undecided — scheduling modal in 1.5s...');
-    setTimeout(() => {
-      console.log('⏰ showPushModal() triggered');
-      showPushModal(false);
-    }, 1500);
-  }
-  else if (perm === 'denied') {
-    console.log('🚫 Permission denied — will not prompt again');
-  }
-
-  console.log('🔚 initPushFlow() END');
 }
-
-//  app flow
-async function initApp() {
-    $('login').classList.add('hidden');
-    const ctrl = $('controls');
-    ctrl.style.display = 'grid';
-    ctrl.innerHTML = '';
-
-    const callBtn = document.createElement('button');
-    callBtn.id = 'callBtn';
-    callBtn.className = 'btn-call';
-    callBtn.innerHTML = '📞 CALL';
-    callBtn.onclick = startCall;
-    ctrl.appendChild(callBtn);
-
-    configData.actions.forEach(action => {
-        const btn = document.createElement('button');
-        btn.className = 'btn-action';
-        btn.innerHTML = `${action.icon} ${action.label}`;
-        btn.onclick = () => runAction(action);
-        ctrl.appendChild(btn);
-    });
-
-    const hangBtn = document.createElement('button');
-    hangBtn.id = 'hangupBtn';
-    hangBtn.className = 'btn-hangup';
-    hangBtn.innerHTML = '📴 END';
-    hangBtn.onclick = hangup;
-    ctrl.appendChild(hangBtn);
-
-    loadWebRTC(configData.video.name);
-    setTimeout(setupSIP, 500);
-
-    // 🔔 PUSH: Auto-flow + orphan recovery
-    initPushFlow();
-}
-
 </script>
 </body>
 </html>

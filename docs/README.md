@@ -57,6 +57,21 @@ Place all deployment files here.
 
 On startup, OneDoor initializes Asterisk, generates crypto keys, provisions SIP endpoints, and configures go2rtc.
 
+###2.6 Notes — Call Modes
+
+New field: call_mode
+
+Supported values:
+  sip      - Preferred and most supported. Full SIP signaling and two‑way audio.
+  generic  - No SIP registration. Audio sourced from the video channel. UI exposes a mic toggle.
+  none     - No mic path. Video‑only. Still supports notifications and deep links.
+
+Notes:
+  - generic and none both rely on the video channel for audio (if present).
+  - sip remains the recommended mode for devices that support it.
+  - advantage of generic or none is audio plays immediately. 
+  - advantage of SIP is audio is actually good.
+
 ---
 
 ## 3. Hardware & Media
@@ -73,11 +88,12 @@ Suggested sub‑stream profile for sub-second response:
 - Bitrate: CBR
 - Keyframe interval: 1 FPS (GOP = FPS)
 
-For even lower latency video, use ffmpeg inside go2rtc:
+- moredoors branch now buffers streams so even some lower quality cameras can get a realtime experience but not all of them.
+
+IMPORTANT for faster feeling video, use #gop=1 tag:
 ```
-streams:
-  camera1:
-    - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#rtsp_transport=udp&client_port=20300"
+camera:
+  - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#gop=1"
 ```
 Then bind this additional media port /udp in compose.
 
@@ -89,11 +105,31 @@ Edge‑case validated: Aiphone IX‑SS‑2G.
 Required SIP configuration:
 
 - SIP Server: Docker host IP
-- Extension / Username: 105
 - Password: one2345door
-- Button press → dial 700
-- Must auto‑answer calls from 700
 - Aiphone may require relay wiring for auto‑answer
+
+Multi‑Door SIP Assignments (v040+)
+
+SIP Username / Extension:
+  Door 1 → 105
+  Door 2 → 106
+  Door 3 → 107
+  Door 4 → 108
+  Door 5 → 109
+  Door 6 → 110
+
+Button Press → Dial Extensions:
+  Door 1 → 700
+  Door 2 → 702
+  Door 3 → 704
+  Door 4 → 706
+  Door 5 → 708
+  Door 6 → 710
+
+Notes:
+  - These numbers correspond to the door index in config.yaml.
+  - They apply even if call_mode is generic or none.
+  - Intercoms must auto‑answer calls from their assigned dialing extension.
 
 ---
 
@@ -106,10 +142,21 @@ Required SIP configuration:
 - v034 — VAPID push notifications for physical button presses, lanscape real estate improved but buttons still messy.
 - v036+ - manager.py to help keep confbridge clean. UI improvements.
 
+v040+ — Multi‑Door Expansion
+  - Added support for more doors
+  - Added support for non-SIP doors in cluding generic and no 2-way at all.
+  - super fast custom go2rtc build
+
 ### 4.2 Multi‑Door Support
 
-Planned after the single‑door experience is fully polished.
+Multi‑door support is now fully implemented.
 
+Each door has:
+  - Independent SIP or non‑SIP audio mode (sip, generic, none)
+  - Independent button‑press routing
+  - Independent notification deep links
+  - Independent action sets
+  - Now even lower latency so even swiping feels fast.
 ---
 
 # 5. Notifications
@@ -127,10 +174,20 @@ If `/vapid` exists, OneDoor loads or generates VAPID keys and enables the notifi
 When the intercom (extension **105**) dials **700**, OneDoor treats it as a doorbell event and sends notifications to all registered devices.
 The intercom is hung up immediately — no bridge, no media.
 
+Button presses are now filtered by endpoint in the dialplan.
+Each door triggers a notification tied to its door index.
+
+Deep links now include the door ID:
+  https://yourdomain/door?door=<door_id>
+
 ### 5.3 Custom Hooks
 OneDoor includes an internal listener on **port 8199** for custom events.
 You can POST your own notifications (all users or a specific user).
-See `doorbell-webhook.sh` for an example of how to trigger OneDoor from external systems. This is the actual hook executed with a button press. Leave domain as "default"
+
+notification.example is now the canonical example file.
+doorbell-webhook.sh is a separate automation hook and not the example.
+
+Add ?door=<door_id> to URLs for deep linking.
 
 ### 5.4 User Registration
 Users are prompted to enable notifications only if:

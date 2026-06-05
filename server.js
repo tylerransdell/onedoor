@@ -21,7 +21,7 @@ let vapidKeys = { publicKey: null, privateKey: null, subject: '' };
 let PUSH_ENABLED = false;
 let subscriptions = {};
 
-// Helper: Generate/fix VAPID keys based on domain (defined early, called later)
+// Helper: Generate/fix VAPID keys based on domain
 function ensureVapidKeys(domain) {
     if (fs.existsSync(VAPID_PATH)) {
         try {
@@ -35,7 +35,7 @@ function ensureVapidKeys(domain) {
             return existing;
         } catch(e) { console.warn('⚠️ Failed to load VAPID keys, will regenerate'); }
     }
-    
+
     console.log(`🔑 Generating VAPID keys for domain: ${domain}`);
     const keys = webPush.generateVAPIDKeys();
     const newKeys = {
@@ -43,7 +43,7 @@ function ensureVapidKeys(domain) {
         privateKey: keys.privateKey,
         subject: `mailto:admin@${domain}`
     };
-    
+
     try {
         fs.writeFileSync(VAPID_PATH, JSON.stringify(newKeys, null, 2));
         console.log('✅ VAPID keys saved');
@@ -54,7 +54,7 @@ function ensureVapidKeys(domain) {
 // --- WS TOKEN ---
 const WS_TOKEN = process.env.WS_TOKEN || crypto.randomBytes(16).toString('hex');
 
-// --- CONFIG LOAD (Must happen BEFORE using config) ---
+// --- CONFIG LOAD ---
 const CONFIG_PATH = process.env.CONFIG_PATH || '/app/onedoor.yaml';
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -66,16 +66,19 @@ if (!JWT_SECRET) {
 let config;
 try {
     config = yaml.load(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    // Ensure nested objects exist to prevent crashes if YAML is malformed
+    if (!config.global) config.global = {};
+    if (!config.doors) config.doors = [];
     console.log("✅ Configuration loaded.");
 } catch (e) {
     console.error("❌ FATAL: Config error:", e.message);
     process.exit(1);
 }
 
-// --- PUSH INIT (NOW SAFE: config is loaded) ---
-if (config?.domain) {
+// --- PUSH INIT ---
+if (config.global?.domain) {
     try {
-        vapidKeys = ensureVapidKeys(config.domain);
+        vapidKeys = ensureVapidKeys(config.global.domain);
         webPush.setVapidDetails(vapidKeys.subject, vapidKeys.publicKey, vapidKeys.privateKey);
         PUSH_ENABLED = !!(vapidKeys.publicKey && vapidKeys.privateKey);
         if (PUSH_ENABLED) console.log(`🔔 Push: Enabled (subject: ${vapidKeys.subject})`);
@@ -96,7 +99,6 @@ const saveSubs = () => {
         try { fs.writeFileSync(SUBS_PATH, JSON.stringify(subscriptions)); } catch{}
     }, 500);
 };
-// --- END PUSH INIT ---
 
 // --- EXPRESS SETUP ---
 const app = express();
@@ -136,48 +138,50 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- CLIENT CONFIG ---
 const getClientConfig = (user, token) => {
-    // ✅ Check if this user has active push subscriptions on the server
-    const hasActiveSub = PUSH_ENABLED && 
-                         subscriptions[user.username] && 
+    const hasActiveSub = PUSH_ENABLED &&
+                         subscriptions[user.username] &&
                          Object.keys(subscriptions[user.username]).length > 0;
 
     return {
         token,
         ws_token: WS_TOKEN,
         vapid_public_key: PUSH_ENABLED ? vapidKeys.publicKey : null,
-
-        // ✅ Send push status to frontend for mismatch detection
         push_status: PUSH_ENABLED ? (hasActiveSub ? 'active' : 'missing') : 'disabled',
 
-        video: { name: config.video.webrtc_name },
         pbx: {
-            dial_extension: config.pbx.dial_extension,
-            user_agent: config.pbx.user_agent,
+            user_agent: config.global.pbx?.user_agent || 'OneDoor',
             username: user.pbx_username,
             password: user.pbx_password
         },
-        actions: (config.actions || []).map(action => {
-            const clientAction = { 
-                id: action.id, 
-                label: action.label, 
-                icon: action.icon, 
-                type: action.type 
-            };
-            if (action.type === 'dtmf') clientAction.payload = action.payload;
-            if (action.type === 'link') clientAction.url = action.url;
-            return clientAction;
-        })
+
+        doors: (config.doors || []).map(door => ({
+            id: door.id,
+            webrtc_name: door.webrtc_name,
+            call_mode: door.call_mode,
+            dial_extension: door.dial_extension,
+            actions: (door.actions || []).map(action => {
+                const clientAction = {
+                    id: action.id,
+                    label: action.label,
+                    icon: action.icon,
+                    type: action.type
+                };
+                if (action.type === 'dtmf') clientAction.payload = action.payload;
+                if (action.type === 'link') clientAction.url = action.url;
+                return clientAction;
+            })
+        }))
     };
 };
 
 // --- API ROUTES ---
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const user = config.users.find(u => u.username === username);
+    const user = config.global.users?.find(u => u.username === username);
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const expiry = `${config.server.token_expiry_days || 30}d`;
+    const expiry = `${config.global.server?.token_expiry_days || 30}d`;
     const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: expiry });
     console.log(`👤 Login: ${username} (expires ${expiry})`);
     res.json(getClientConfig(user, token));
@@ -188,7 +192,7 @@ app.get('/api/verify', (req, res) => {
     if (!auth?.startsWith('Bearer ')) return res.status(401).send();
     try {
         const payload = jwt.verify(auth.slice(7), JWT_SECRET);
-        const user = config.users.find(u => u.username === payload.username);
+        const user = config.global.users?.find(u => u.username === payload.username);
         if (!user) throw new Error('User not found');
         res.json({ valid: true, ...getClientConfig(user, auth.slice(7)) });
     } catch {
@@ -220,16 +224,30 @@ app.post('/api/register-notification', authenticateJWT, (req, res) => {
 app.post('/api/action', async (req, res) => {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) return res.status(401).send();
+
     try {
         jwt.verify(auth.slice(7), JWT_SECRET);
-        const { actionId } = req.body;
-        const action = config.actions.find(a => a.id === actionId);
+        const { doorId, actionId } = req.body;
+
+        if (!doorId || !actionId) {
+            return res.status(400).json({ error: 'Missing doorId or actionId' });
+        }
+
+        const door = (config.doors || []).find(d => d.id === doorId);
+        if (!door) {
+            return res.status(404).json({ error: 'Door not found' });
+        }
+
+        const action = (door.actions || []).find(a => a.id === actionId);
+
         if (action?.type === 'hook') {
-            console.log(`🔌 Hook: ${action.label}`);
+            console.log(`🔌 Hook: [${doorId}] ${action.label}`);
             fetch(action.url, { method: 'POST' }).catch(err => console.error('Hook failed:', err.message));
             return res.json({ success: true });
         }
-        res.status(400).json({ error: 'Action not found' });
+
+        res.status(400).json({ error: 'Action not found or not a backend hook' });
+
     } catch {
         res.status(401).send();
     }
@@ -263,25 +281,22 @@ server.on('upgrade', (req, socket, head) => {
     socket.destroy();
 });
 
-// --- PUSH DISPATCHER (Listens to internal events) ---
+// --- PUSH DISPATCHER ---
 notifier.on('send-push', async ({ target, message }) => {
     if (!PUSH_ENABLED) {
         console.warn('⚠️ Push disabled: cannot send');
         return;
     }
 
-    // Resolve targets: "all" = every registered username
     const targets = target === 'all' ? Object.keys(subscriptions) : [target];
     console.log(`🔔 Dispatching to ${targets.length} target(s): ${targets.join(', ')}`);
 
     for (const user of targets) {
-        // Skip if user has no subscriptions
         if (!subscriptions[user]) {
             console.warn(`⚠️ No subscriptions for user: ${user}`);
             continue;
         }
 
-        // Convert object values to array for iteration
         const subsArray = Object.values(subscriptions[user] || {});
         if (subsArray.length === 0) {
             console.warn(`⚠️ No active subscriptions for user: ${user}`);
@@ -290,17 +305,15 @@ notifier.on('send-push', async ({ target, message }) => {
 
         let success = 0, failed = 0;
 
-        // Process each subscription in parallel
         const results = await Promise.all(subsArray.map(async (sub) => {
             try {
                 await webPush.sendNotification(sub, message);
                 success++;
                 console.log(`✅ Push sent: ${user} → ${sub.endpoint.substring(0, 40)}...`);
-                return sub; // Keep valid subscription
+                return sub;
             } catch (e) {
                 failed++;
 
-                // Log details for debugging 4xx errors
                 if ([400, 403, 404, 410].includes(e.statusCode)) {
                     console.warn(`❌ Push failed: ${user} → ${e.statusCode}`);
                     console.warn(`   Endpoint: ${sub.endpoint.substring(0, 60)}...`);
@@ -308,27 +321,22 @@ notifier.on('send-push', async ({ target, message }) => {
                     if (e.body) console.warn(`   Response: ${e.body}`);
                 }
 
-                // ✅ AUTO-PRUNE: Delete subscription on VAPID mismatch or dead endpoint
-                // VapidPkHashMismatch (400) means keys changed → subscription is permanently invalid
-                if (e.statusCode === 404 || e.statusCode === 410 || 
+                if (e.statusCode === 404 || e.statusCode === 410 ||
                     (e.statusCode === 400 && e.body?.includes('VapidPkHashMismatch'))) {
+                    // Fixed typo: e.statusCod -> e.statusCode
                     console.log(`🗑️ Pruned invalid endpoint: ${user} → ${e.statusCode} ${e.body?.includes('VapidPkHashMismatch') ? '(VAPID mismatch)' : ''}`);
-                    return null; // Mark for removal
+                    return null;
                 }
 
-                // Keep subscription for retry on transient errors (5xx, network issues)
                 return sub;
             }
         }));
 
-        // Filter out nulls (pruned endpoints) and rebuild the user's subscription object
         const validSubs = results.filter(Boolean);
         if (validSubs.length === 0) {
-            // No valid subs left → remove user entirely
             delete subscriptions[user];
             console.log(`🗑️ Removed user ${user}: no valid subscriptions`);
         } else if (validSubs.length < subsArray.length) {
-            // Some subs were pruned → rebuild object preserving deviceId keys
             const rebuilt = {};
             for (const [devId, sub] of Object.entries(subscriptions[user])) {
                 if (validSubs.includes(sub)) {
@@ -342,15 +350,13 @@ notifier.on('send-push', async ({ target, message }) => {
         console.log(`📊 ${user}: ${success} sent, ${failed} failed`);
     }
 
-    // Debounced write to disk
     saveSubs();
 });
-// --- END PUSH DISPATCHER ---
 
 // --- SNOOZE STATE ---
 const snooze = { allUntil: 0, sameLast: new Map() };
 setInterval(() => {
-    const threshold = Date.now()/1000 - ((config.notifications?.snooze_same || 60) * 2);
+    const threshold = Date.now()/1000 - ((config.global.notifications?.snooze_same || 60) * 2);
     for (const [key, ts] of snooze.sameLast) { if (ts < threshold) snooze.sameLast.delete(key); }
 }, 5 * 60 * 1000);
 
@@ -358,20 +364,16 @@ setInterval(() => {
 const hookApp = require('express')();
 hookApp.use(require('express').json());
 
-// --- SANITIZE PAYLOAD FOR IOS/ANDROID COMPATIBILITY ---
 const sanitizePayload = (payload, domain) => {
     const clean = { ...payload };
 
-    // Ensure URL is absolute HTTPS
     if (clean.url) {
         if (!clean.url.startsWith('https://')) {
             clean.url = `https://${domain}${clean.url.startsWith('/') ? clean.url : '/' + clean.url}`;
         }
-        // Remove fragments/hash for iOS compatibility
         clean.url = clean.url.split('#')[0];
     }
 
-    // Ensure icon/badge are absolute URLs
     if (clean.icon && !clean.icon.startsWith('http')) {
         clean.icon = `https://${domain}${clean.icon.startsWith('/') ? clean.icon : '/' + clean.icon}`;
     }
@@ -379,28 +381,61 @@ const sanitizePayload = (payload, domain) => {
         clean.badge = `https://${domain}${clean.badge.startsWith('/') ? clean.badge : '/' + clean.badge}`;
     }
 
-    // Trim body to avoid Apple 4KB limit
     if (clean.body && clean.body.length > 500) {
         clean.body = clean.body.substring(0, 497) + '...';
     }
 
-    // Ensure title exists (iOS requires it)
     if (!clean.title) clean.title = 'OneDoor';
 
     return clean;
 };
 
-// --- WEBHOOK HANDLER (Port 8199) ---
+// --- 🆕 SMART WEBHOOK ROUTE ---
 hookApp.post('/webhook', (req, res) => {
+    // Extract door/extension first to determine if it's a doorbell event
+    const { extension, door } = req.body;
+    
     let {
         target = 'all',
-        payload = { body: 'Door event' },
-        snooze_all = config.notifications?.snooze_all || 30,
-        snooze_same = config.notifications?.snooze_same || 30
+        payload = {}, // Start empty, we will build it dynamically if it's a doorbell
+        snooze_all = config.global.notifications?.snooze_all || 30,
+        snooze_same = config.global.notifications?.snooze_same || 30
     } = req.body;
 
-    // ✅ Resolve 'default' placeholder for BOTH URL & Icon (iOS requires absolute HTTPS)
-    const domain = config.domain || 'localhost';
+    let doorConfig = null;
+
+    // --- DOORBELL LOGIC (Extension or Door ID provided) ---
+    if (extension !== undefined || door !== undefined) {
+        // 1. Find the door in onedoor.yaml
+        if (extension !== undefined) {
+            doorConfig = (config.doors || []).find(d => d.dial_extension == extension);
+        } else if (door !== undefined) {
+            doorConfig = (config.doors || []).find(d => d.id === door);
+        }
+
+        // 2. Build the payload dynamically based on the door config
+        if (doorConfig) {
+            payload.title = payload.title || `${doorConfig.id.charAt(0).toUpperCase() + doorConfig.id.slice(1)} Doorbell`;
+            payload.body = payload.body || 'Someone is at the door';
+            payload.icon = payload.icon || `https://default/icons/${doorConfig.id}.png`;
+            payload.url = `https://default?door=${doorConfig.id}`; // Auto deep-link!
+            console.log(`🎣 Doorbell: Ext ${extension || 'N/A'} -> Door ${doorConfig.id}`);
+        } else {
+            // Fallback if extension isn't found in config
+            payload.title = payload.title || 'Doorbell';
+            payload.body = payload.body || 'Someone is at the door';
+            console.log(`⚠️ Doorbell: Ext ${extension || door} not found in config!`);
+        }
+    } 
+    // --- GENERIC WEBHOOK LOGIC (No extension/door provided) ---
+    else {
+        if (!payload.body) payload.body = 'Door event';
+        payload.title = payload.title || 'Notification';
+        console.log(`🎣 Generic Webhook: ${target} → ${JSON.stringify(payload)}`);
+    }
+
+    // --- SNOOZE & SANITIZE LOGIC ---
+    const domain = config.global.domain || 'localhost';
     if (payload.url?.includes('://default')) {
         payload.url = payload.url.replace('default', domain);
     }
@@ -410,30 +445,28 @@ hookApp.post('/webhook', (req, res) => {
 
     const now = Date.now() / 1000;
 
-    // Policy: Global cooldown
     if (snooze_all > 0 && now < snooze.allUntil) {
         console.log(`🔕 Snoozed All: ${target} (until ${new Date(snooze.allUntil*1000).toISOString()})`);
         return res.status(200).send('Snoozed All');
     }
 
-    // Policy: Dedupe identical payloads
-    const key = `${target}:${JSON.stringify(payload)}`;
+    // Include door ID in the dedupe key so Front doesn't snooze Side
+    const doorId = doorConfig?.id || 'generic';
+    const key = `${target}:${doorId}:${JSON.stringify(payload)}`;
+    
     if (snooze_same > 0 && snooze.sameLast.has(key) && now < (snooze.sameLast.get(key) + snooze_same)) {
         console.log(`🔕 Snoozed Same: ${key}`);
         return res.status(200).send('Snoozed Same');
     }
 
-    // Update state
     if (snooze_all > 0) snooze.allUntil = now + snooze_all;
     if (snooze_same > 0) snooze.sameLast.set(key, now);
 
-    // Sanitize payload for cross-platform compatibility (trims, ensures absolute URLs, etc.)
     const cleanPayload = sanitizePayload(payload, domain);
     const message = JSON.stringify(cleanPayload);
 
-    console.log(`🎣 Webhook: ${target} → ${JSON.stringify(cleanPayload)}`);
+    console.log(`🎣 Webhook: [${doorId}] ${target} → ${JSON.stringify(cleanPayload)}`);
 
-    // Emit to dispatcher (defined elsewhere in server.js)
     notifier.emit('send-push', { target, message });
     res.sendStatus(202);
 });
@@ -441,7 +474,7 @@ hookApp.post('/webhook', (req, res) => {
 hookApp.listen(8199, '0.0.0.0', () => console.log('🎣 Webhook: 0.0.0.0:8199'));
 
 // --- START MAIN SERVER ---
-const PORT = config.server.listen_port || 8099;
+const PORT = config.global.server?.listen_port || 8099;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`--- OneDoor Backend ---`);
     console.log(`🚀 Port: ${PORT}`);
