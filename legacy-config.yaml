@@ -1,0 +1,37 @@
+####OneDoor unified docker config - bind to /app/config.yaml
+domain: #required domain name example "door.domain.com"
+docker_host: #required local ip example "192.168.1.101"
+
+
+go2rtc:
+  simple_mode: #true please
+  camera: #url for your camera feed 
+
+onedoor:
+  simple_mode: #true please
+  token_expiry_days: #default 30, 1-400 allowed.
+  users:
+    - username:
+      password_hash: #use makepass.example one-liner
+    - username: #1-99 users allowed
+      password_hash:
+  actions: # up to two actions. can be same type. slightly different format per type. 
+    - id: #placeholer string
+      label: #name on button
+      type: #"hook" "link" or "dtmf"
+      icon: #icon
+      url: #url for "hook" or "link", payload: for "dtmf"
+  notifications: #enable by binding /vapid in docker-compose.yml
+    snooze_all: 90 #seconds to snooze all notifications after one is sent
+    snooze_same: 120 #for identical notifications if using multiple notifiers.
+
+pbx:
+  simple_mode: #true please
+
+# WARNING-Switching from advanced to simple mode with active rw binds will wipe your configs.
+# simple_mode: false means that you must bind your own configs to:
+# /config/go2rtc.yaml /app/onedoor.yaml and /etc/asterisk/
+# advanced mode will also disable automatic dtls key gens for pbx.
+# using advanced mode for either onedoor or pbx means you MUST use it for both.
+# go2rtc advanced mode can be used without needing advanced onedoor or pbx.
+# simple_mode intercom is 105:one2345door auto answer = on
