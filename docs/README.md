@@ -172,10 +172,38 @@ OneDoor treats the browser as untrusted and keeps sensitive data server‑side.
 - go2rtc API restricted to exec ffmpeg only (no arbitrary commands)
 
 ----------------------------------------------------------------------
-5. Roadmap
+5. Administration
 ----------------------------------------------------------------------
 
-5.1 Versions
+5.1 User Accounts
+
+Usernames and password hashes are defined manually in `config.yaml`.  
+To revoke all user sessions at once, change the `JWT_SECRET` value in `docker-compose.yml`.  
+This invalidates every existing token and forces all users to log in again.
+
+5.2 Notification Registrations
+
+All WebPush registrations are stored in the `/vapid` directory.  
+To clear every registered device (or reset the notification system entirely), delete the contents of `/vapid` and restart the container.  
+New keys will be generated automatically.
+
+5.3 Generated Runtime Configuration
+
+After OneDoor fully initializes, final runtime configuration files are written to:
+
+- `/app/onedoor.yaml`  
+- `/config/go2rtc.yaml`  
+- `/etc/asterisk/`  
+
+These files reflect the merged and validated configuration used internally by the system and may be useful for troubleshooting.
+
+It is technically possible to bind custom versions of these files into the container, but this is **not recommended** and will almost certainly break at some point.
+
+----------------------------------------------------------------------
+6. Roadmap
+----------------------------------------------------------------------
+
+6.1 Versions
 - v031 — Baselines + documentation
 - v032 — Added link actions (hook, dtmf, link)
 - v034 — VAPID notifications; improved landscape layout
@@ -189,7 +217,7 @@ OneDoor treats the browser as untrusted and keeps sensitive data server‑side.
   - UI refinements for portrait/landscape
   - manager.py for SIP call cleanup
 
-5.2 Multi‑Door Support
+6.2 Multi‑Door Support
 Each door has:
 - Independent audio mode (sip/generic/none)
 - Independent button routing
@@ -198,7 +226,7 @@ Each door has:
 - Faster swipe transitions
 
 ----------------------------------------------------------------------
-6. Contributions
+7. Contributions
 ----------------------------------------------------------------------
 
 PRs are welcome if they:
