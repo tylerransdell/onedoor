@@ -33,10 +33,10 @@
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             touch-action: pan-y;
         }
-        video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; background: #000; will-change: transform; transform: translateZ(0); }
 
         #door-title {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
             font-size: 14px; font-weight: 600; z-index: 50; pointer-events: none;
             text-transform: capitalize; white-space: nowrap;
@@ -88,7 +88,7 @@
             }
         }
 
-        /* Landscape: 150% width stretch toward center */
+        /* Landscape: 137.5% width stretch toward center */
         @media (orientation: landscape) {
             #video-container { right: 25vw; left: 0; }
             #controls {
@@ -102,11 +102,17 @@
                 justify-content: center;
             }
             #controls button {
-                width: 150%;
+                width: 137.5%;
                 height: 48px;
-                margin-left: -25%;
+                margin-left: -18.75%;
                 flex: none;
             }
+        }
+        
+        /* Disable transitions during rotation to prevent jitter */
+        body.rotating #video-container,
+        body.rotating #controls {
+            transition: none !important;
         }
 
         button {
@@ -127,12 +133,17 @@
         .btn-hangup { background: var(--red); display: none; }
         .btn-action { background: #333; border: 1px solid #444; }
 
+        /* Toggle States */
+        .btn-toggle-on { background: #22c55e; color: #fff; }
+        .btn-toggle-off { background: #6b7280; color: #fff; }
+        .btn-toggle-unknown { background: #eab308; color: #000; cursor: not-allowed; opacity: 0.7; }
+
         #login { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; }
         #audio-blocker { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; display: none; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
         form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
         input { width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; outline: none; }
         .hidden { display: none !important; }
-        #status { position: absolute; top: 12px; left: 12px; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 4px; z-index: 50; letter-spacing: 0.05em; }
+        #status { position: absolute; top: 40px; left: 12px; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 4px; z-index: 50; letter-spacing: 0.05em; }
     </style>
 </head>
 <body>
@@ -171,6 +182,17 @@ let doors = [];
 let currentDoorIndex = 0;
 let currentDoor = null;
 let localStream = null; // For Generic mode mic
+
+// --- TOGGLE POLLING STATE ---
+let bgPollInterval = null;
+const BG_POLL_INTERVAL = 10000;  // 10 seconds
+const ACTION_POLL_INTERVAL = 2000;  // 2 seconds after action
+const ACTION_POLL_MAX = 20;  // 20 seconds max
+let actionPollTimeouts = new Map();
+let actionPollCounters = new Map();
+let actionPollTargets = new Map();
+let actionPollBtns = new Map();
+let fastPollingIds = new Set();  // actions currently in fast-poll mode
 
 const API = window.location.origin;
 const $ = id => document.getElementById(id);
@@ -420,30 +442,159 @@ function renderDoor() {
         ctrl.appendChild(hangBtn);
     }
 
-    // 2. Actions
-    (currentDoor.actions || []).forEach(action => {
+    // 2. Actions (Limit to 4 total buttons including call button)
+    const maxActions = (currentDoor.call_mode === 'sip' || currentDoor.call_mode === 'generic') ? 3 : 4;
+    const actions = (currentDoor.actions || []).slice(0, maxActions);
+    
+    actions.forEach(action => {
         const btn = document.createElement('button');
         btn.className = 'btn-action';
+        btn.dataset.actionId = action.id;
         btn.innerHTML = `${action.icon || '⚡'} ${action.label}`;
-        btn.onclick = () => runAction(action);
+
+        // Toggle state styling
+        if (action.type === 'toggle') {
+            applyToggleStyle(btn, action.state);
+        }
+
+        btn.onclick = () => runAction(action, btn);
         ctrl.appendChild(btn);
     });
 
     // 3. Load Media
     loadMedia(currentDoor);
-    
+
+    // 4. Start background polling for toggle states
+    startBackgroundPolling();
+
     // Reset UI state
     resetUI();
 }
 
+// --- TOGGLE POLLING ---
+function applyToggleStyle(btn, state) {
+    btn.classList.remove('btn-toggle-on', 'btn-toggle-off', 'btn-toggle-unknown');
+    if (state === 'on') {
+        btn.classList.add('btn-toggle-on');
+        btn.disabled = false;
+    } else if (state === 'off') {
+        btn.classList.add('btn-toggle-off');
+        btn.disabled = false;
+    } else {
+        btn.classList.add('btn-toggle-unknown');
+        btn.disabled = true;
+    }
+}
+
+function startBackgroundPolling() {
+    stopBackgroundPolling();
+    pollToggleStates();
+    bgPollInterval = setInterval(pollToggleStates, BG_POLL_INTERVAL);
+}
+
+function stopBackgroundPolling() {
+    if (bgPollInterval) {
+        clearInterval(bgPollInterval);
+        bgPollInterval = null;
+    }
+    for (const [actionId, timeout] of actionPollTimeouts) {
+        clearTimeout(timeout);
+    }
+    actionPollTimeouts.clear();
+    actionPollCounters.clear();
+    actionPollTargets.clear();
+    actionPollBtns.clear();
+    fastPollingIds.clear();
+}
+
+function pollToggleStates() {
+    if (!currentDoor) return;
+    (currentDoor.actions || []).forEach(action => {
+        if (action.type === 'toggle' && action.has_status && !fastPollingIds.has(action.id)) {
+            fetchToggleState(action);
+        }
+    });
+}
+
+async function fetchToggleState(action) {
+    try {
+        const res = await fetch(
+            `${API}/api/action/status?doorId=${currentDoor.id}&actionId=${action.id}`,
+            { headers: { 'Authorization': `Bearer ${configData.token}` } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.state === 'on' || data.state === 'off') {
+            action.state = data.state;
+            const btn = document.querySelector(`[data-action-id="${action.id}"]`);
+            if (btn) applyToggleStyle(btn, data.state);
+        }
+    } catch (err) {
+        console.warn('Toggle status fetch failed:', err.message);
+    }
+}
+
+function startActionPolling(action, btn, desiredState) {
+    if (actionPollTimeouts.has(action.id)) {
+        clearTimeout(actionPollTimeouts.get(action.id));
+    }
+    actionPollCounters.set(action.id, 0);
+    actionPollTargets.set(action.id, desiredState);
+    actionPollBtns.set(action.id, btn);
+    fastPollingIds.add(action.id);
+
+    const cleanup = () => {
+        fastPollingIds.delete(action.id);
+        actionPollTimeouts.delete(action.id);
+        actionPollCounters.delete(action.id);
+        actionPollTargets.delete(action.id);
+        actionPollBtns.delete(action.id);
+        fetchToggleState(action);
+    };
+
+    const poll = async () => {
+        const count = actionPollCounters.get(action.id) + 1;
+        actionPollCounters.set(action.id, count);
+
+        try {
+            const res = await fetch(
+                `${API}/api/action/status?doorId=${currentDoor.id}&actionId=${action.id}`,
+                { headers: { 'Authorization': `Bearer ${configData.token}` } }
+            );
+            if (!res.ok) throw new Error('Status fetch failed');
+            const data = await res.json();
+
+            if (data.state === desiredState) {
+                action.state = data.state;
+                applyToggleStyle(btn, data.state);
+                cleanup();
+                return;
+            }
+        } catch (err) {
+            console.warn('Action poll error:', err.message);
+        }
+
+        if (count < ACTION_POLL_MAX) {
+            const timeout = setTimeout(poll, ACTION_POLL_INTERVAL);
+            actionPollTimeouts.set(action.id, timeout);
+        } else {
+            action.state = 'unknown';
+            applyToggleStyle(btn, 'unknown');
+            cleanup();
+        }
+    };
+
+    poll();
+}
+
 // --- ACTION LOGIC ---
-async function runAction(action) {
+async function runAction(action, btn) {
     if (action.type === 'dtmf') {
         if (currentDoor.call_mode === 'sip' && session) {
             session.sendDTMF(action.payload);
             setStatus(`SENT: ${action.payload}`);
         } else if (currentDoor.call_mode === 'generic') {
-             setStatus('DTMF N/A'); // go2rtc doesn't support DTMF via API easily in this context
+             setStatus('DTMF N/A');
         }
     } else if (action.type === 'hook') {
         setStatus('SENDING...');
@@ -458,8 +609,71 @@ async function runAction(action) {
         if (res.ok) setStatus('SUCCESS');
     } else if (action.type === 'link') {
         if (action.url) window.location.href = action.url;
+    } else if (action.type === 'toggle') {
+        if (action.state === 'unknown') return;
+        const desiredState = action.state === 'on' ? 'off' : 'on';
+        action.state = 'unknown';
+        applyToggleStyle(btn, 'unknown');
+        setStatus('SENDING...');
+
+        try {
+            const res = await fetch(`${API}/api/action`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${configData.token}`
+                },
+                body: JSON.stringify({
+                    doorId: currentDoor.id,
+                    actionId: action.id,
+                    command: desiredState
+                })
+            });
+            if (res.ok) {
+                setStatus('SUCCESS');
+                startActionPolling(action, btn, desiredState);
+            } else {
+                setStatus('ERROR');
+            }
+        } catch (err) {
+            setStatus('ERROR');
+            console.error('Toggle action error:', err);
+        }
     }
     setTimeout(() => setStatus(session?.isEstablished() ? 'IN CALL' : 'READY'), 2000);
+}
+
+// --- ORIENTATION HANDLER ---
+let orientationTimeout;
+let lastOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+
+function handleOrientationChange() {
+    const currentOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    if (currentOrientation === lastOrientation) return;
+    
+    clearTimeout(orientationTimeout);
+    document.body.classList.add('rotating');
+    
+    // Use requestAnimationFrame to wait for the next paint cycle
+    requestAnimationFrame(() => {
+        // Force a reflow by reading a layout property
+        void document.body.offsetHeight;
+        
+        orientationTimeout = setTimeout(() => {
+            lastOrientation = currentOrientation;
+            document.body.classList.remove('rotating');
+            
+            // Force another reflow after removing the class
+            void document.body.offsetHeight;
+        }, 100); // Reduced delay
+    });
+}
+
+// Use orientationchange event if available, fallback to resize
+if ('onorientationchange' in window) {
+    window.addEventListener('orientationchange', handleOrientationChange);
+} else {
+    window.addEventListener('resize', handleOrientationChange);
 }
 
 // --- AUTH & INIT ---

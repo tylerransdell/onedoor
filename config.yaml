@@ -34,4 +34,27 @@ moredoors:
         icon: #"🔒"
 # - id: "side" - more camera/door list works like this
 #   call_mode:
-#   camera:
+#   camera: camera or list of streams as per go2rtc
+#   actions: new actions schema below
+#     - id: ha_light
+#       label: "HA Light"
+#       type: "hook"   <<<---------- more advanced home assistant hook
+#       url: "http://192.168.1.100:8123/api/services/light/turn_on"
+#       icon: "💡"
+#       headers:
+#         Authorization: "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi..."
+#       body:
+#         entity_id: "light.front_porch"
+#     - id: "garage_door"
+#       label: "Garage"
+#       type: "toggle"   <<<<<<----------------- state-aware toggle
+#       icon: "🚗"
+#       on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
+#       off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
+#       status_url: "http://192.168.1.100:8123/api/states/cover.garage"
+#       on_values: ["open"]
+#       off_values: ["closed"]
+#       headers:
+#         Authorization: "Bearer fdlkj54j6lk54jtlrekjg5jlmk..."
+#       body:
+#         entity_id: "cover.garage":8123/api/services/cover/open_cover"

@@ -31,7 +31,7 @@ The result is a clean, ultra‑fast door application that works seamlessly with 
   - `sip` for full SIP signaling and the best experience
   - `generic` for video‑channel audio + mic toggle
   - `none` for video‑channel audio without 2‑way talk
-- **Per‑door action sets** — Configurable DTMF payloads, private backend webhooks, and frontend links for NVR jumps or automations.
+- **Per‑door action sets** — Configurable DTMF payloads, private backend webhooks, frontend links, and state‑aware toggle actions for locks, lights, and automations.
 - **Deep‑linked notifications** — Alerts take you directly to the door that was pressed.
 - **Unified multi‑door config** — Powerful, simple, and self‑explanatory. Legacy SIP‑only configs remain valid.
 - **Ultra‑low latency** — Full‑duplex SIP audio + go2rtc WebRTC video tuned for sub‑second response.

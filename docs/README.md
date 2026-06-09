@@ -8,7 +8,7 @@ OneDoor is a single‑container, ultra‑low‑latency door console that unifies
 
 1.1 Cameras (go2rtc)
 
-OneDoor uses a speed-optimized go2rtc build for media routing. Good cameras can produce sub‑second startup on their own but all cameras benefit from v040’s preload + GOP cache.
+OneDoor uses a speed-optimized go2rtc build for media routing. Good cameras can produce sub‑second startup on their own but all cameras benefit from v040's preload + GOP cache.
 
 Recommended brands:
 - Dahua (N45EJ62 is the primary development reference)
@@ -151,43 +151,177 @@ Users are prompted only when:
 - Logged in
 - Not already registered on that device
 - Keys are invalid or expired
+- User has not previously dismissed or snoozed registration
 
 iOS users must install OneDoor as a Home Screen app.
 
+3.5 Webhook Rate Limiting
+
+OneDoor implements automatic rate limiting on the webhook endpoint (port 8199) as a security measure. This prevents abuse if the webhook port is accidentally exposed to the internet.
+
+- snooze_all: suppresses all webhook-triggered notifications for a configurable duration after any webhook fires
+- snooze_same: prevents identical webhook payloads from triggering duplicate notifications
+
+Configuration (in config.yaml):
+```yaml
+onedoor:
+  notifications:
+    snooze_all: 120    # seconds to suppress all notifications after any webhook
+    snooze_same: 120   # seconds before identical webhook can re-trigger
+```
+
+Notes:
+- This is a server-side security feature, not user-controllable
+- snooze_all applies globally across all doors
+- snooze_same is per-payload (prevents duplicate alerts from the same event)
+- Setting either value to 0 disables that rate limit
+
 ----------------------------------------------------------------------
-4. Security Model
+4. Actions
+----------------------------------------------------------------------
+
+Each door can have action buttons. Actions are defined per-door in config.yaml under the `actions` list.
+
+4.1 Hook Actions
+
+Simple webhook trigger. Fires a POST request to a URL.
+
+Configuration:
+- type: "hook"
+- url: Target URL
+- headers: Optional HTTP headers (e.g., Authorization for Home Assistant)
+- body: Optional JSON body
+
+Example:
+```yaml
+- id: "porch_light"
+  label: "Porch Light"
+  type: "hook"
+  url: "http://192.168.1.100:8123/api/services/light/turn_on"
+  icon: "💡"
+  headers:
+    Authorization: "Bearer YOUR_LONG_LIVED_TOKEN"
+  body:
+    entity_id: "light.porch"
+```
+
+4.2 DTMF Actions
+
+Sends a DTMF payload to the intercom (e.g., for door locks).
+
+Configuration:
+- type: "dtmf"
+- payload: DTMF string to send
+
+Example:
+```yaml
+- id: "front_lock"
+  label: "Unlock"
+  type: "dtmf"
+  payload: "1234"
+  icon: "🔒"
+```
+
+4.3 Link Actions
+
+Opens a URL in a new tab.
+
+Configuration:
+- type: "link"
+- url: Target URL
+
+Example:
+```yaml
+- id: "front_link"
+  label: "Front Door"
+  type: "link"
+  url: "https://yourdomain?door=front"
+  icon: "🚪"
+```
+
+4.4 State-Aware Toggle Actions (v041+)
+
+Toggle actions track the on/off state of a device by polling a status endpoint. The frontend only receives "on", "off", or "unknown" — all URL handling and state matching occurs server-side.
+
+Configuration:
+- type: "toggle"
+- on_url: URL to call when turning device on (backend only)
+- off_url: URL to call when turning device off (backend only)
+- status_url: URL to poll for current state (backend only)
+- on_values: Array of state values meaning "on" (e.g., ["open", "on"])
+- off_values: Array of state values meaning "off" (e.g., ["closed", "off"])
+- headers: Optional HTTP headers (e.g., Authorization for Home Assistant)
+- body: Optional JSON body
+
+Example (Home Assistant cover):
+```yaml
+- id: "garage_door"
+  label: "Garage"
+  type: "toggle"
+  icon: "🚗"
+  on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
+  off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
+  status_url: "http://192.168.1.100:8123/api/states/cover.garage"
+  on_values: ["open"]
+  off_values: ["closed"]
+  headers:
+    Authorization: "Bearer YOUR_LONG_LIVED_TOKEN"
+  body:
+    entity_id: "cover.garage"
+```
+
+How It Works:
+- Backend polls status_url and compares the response to on_values/off_values
+- Frontend only receives the simplified state: "on", "off", or "unknown"
+- Frontend never sees the actual URLs or raw state values
+
+State Polling:
+- Client polls GET /api/action/status?doorId=X&actionId=Y
+- Backend returns: { state: "on" | "off" | "unknown" }
+- Button appearance updates based on state:
+  - "on" or "off" — button is active and shows the current state
+  - "unknown" — button becomes inactive (yellow) and cannot be toggled
+- If status_url is omitted, state defaults to "unknown"
+
+Sending Commands:
+- POST /api/action with doorId, actionId, and command ("on" or "off")
+- Backend calls the appropriate on_url or off_url
+- Commands are rejected when state is "unknown" to prevent unintended actions
+
+----------------------------------------------------------------------
+5. Security Model
 ----------------------------------------------------------------------
 
 OneDoor treats the browser as untrusted and keeps sensitive data server‑side.
 
-4.1 Public → OneDoor
+5.1 Public → OneDoor
 - TLS required
 - All routes protected by JWT
 - No media or UI loads without valid token
 
-4.2 OneDoor → Internal Services
+5.2 OneDoor → Internal Services
 - WebSocket upgrades use a separate random token, never the JWT
 - Webhooks are hidden; clients only receive a webhook ID
 - Notification subsystem accepts local triggers only
 - go2rtc API restricted to exec ffmpeg only (no arbitrary commands)
 
 ----------------------------------------------------------------------
-5. Administration
+6. Administration
 ----------------------------------------------------------------------
 
-5.1 User Accounts
+6.1 User Accounts
 
 Usernames and password hashes are defined manually in `config.yaml`.  
 To revoke all user sessions at once, change the `JWT_SECRET` value in `docker-compose.yml`.  
 This invalidates every existing token and forces all users to log in again.
 
-5.2 Notification Registrations
+6.2 Notification Registrations
 
 All WebPush registrations are stored in the `/vapid` directory.  
 To clear every registered device (or reset the notification system entirely), delete the contents of `/vapid` and restart the container.  
 New keys will be generated automatically.
 
-5.3 Generated Runtime Configuration
+6.3 Generated Runtime Configuration
 
 After OneDoor fully initializes, final runtime configuration files are written to:
 
@@ -200,10 +334,10 @@ These files reflect the merged and validated configuration used internally by th
 It is technically possible to bind custom versions of these files into the container, but this is **not recommended** and will almost certainly break at some point.
 
 ----------------------------------------------------------------------
-6. Roadmap
+7. Roadmap
 ----------------------------------------------------------------------
 
-6.1 Versions
+7.1 Versions
 - v031 — Baselines + documentation
 - v032 — Added link actions (hook, dtmf, link)
 - v034 — VAPID notifications; improved landscape layout
@@ -212,12 +346,15 @@ It is technically possible to bind custom versions of these files into the conta
   - More doors
   - Non-SIP doors (generic, none)
   - Custom go2rtc build (very fast)
-- v041+ — Upcoming
-  - State‑aware toggle actions
+- v041 — State‑Aware Toggle Actions
+  - Toggle actions with state polling
   - UI refinements for portrait/landscape
   - manager.py for SIP call cleanup
+- v042+ — Upcoming
+  - Additional UI improvements
+  - Enhanced automation hooks
 
-6.2 Multi‑Door Support
+7.2 Multi‑Door Support
 Each door has:
 - Independent audio mode (sip/generic/none)
 - Independent button routing
@@ -226,11 +363,11 @@ Each door has:
 - Faster swipe transitions
 
 ----------------------------------------------------------------------
-7. Contributions
+8. Contributions
 ----------------------------------------------------------------------
 
 PRs are welcome if they:
 - Improve functionality
-- Maintain OneDoor’s clean, low‑latency design
-- Fit the project’s philosophy
+- Maintain OneDoor's clean, low‑latency design
+- Fit the project's philosophy
 - Remain under MIT

@@ -168,6 +168,10 @@ const getClientConfig = (user, token) => {
                 };
                 if (action.type === 'dtmf') clientAction.payload = action.payload;
                 if (action.type === 'link') clientAction.url = action.url;
+                if (action.type === 'toggle') {
+                    clientAction.state = 'unknown';
+                    clientAction.has_status = !!action.status_url;
+                }
                 return clientAction;
             })
         }))
@@ -227,7 +231,7 @@ app.post('/api/action', async (req, res) => {
 
     try {
         jwt.verify(auth.slice(7), JWT_SECRET);
-        const { doorId, actionId } = req.body;
+        const { doorId, actionId, command } = req.body;
 
         if (!doorId || !actionId) {
             return res.status(400).json({ error: 'Missing doorId or actionId' });
@@ -239,17 +243,102 @@ app.post('/api/action', async (req, res) => {
         }
 
         const action = (door.actions || []).find(a => a.id === actionId);
+        if (!action) {
+            return res.status(404).json({ error: 'Action not found' });
+        }
 
-        if (action?.type === 'hook') {
+        // --- Enhanced Hook (supports headers + body) ---
+        if (action.type === 'hook') {
             console.log(`🔌 Hook: [${doorId}] ${action.label}`);
-            fetch(action.url, { method: 'POST' }).catch(err => console.error('Hook failed:', err.message));
+            const options = { method: 'POST' };
+            if (action.headers) options.headers = { ...action.headers };
+            if (action.body) {
+                options.body = JSON.stringify(action.body);
+                options.headers = { ...(options.headers || {}), 'Content-Type': 'application/json' };
+            }
+            fetch(action.url, options).catch(err => console.error('Hook failed:', err.message));
             return res.json({ success: true });
         }
 
-        res.status(400).json({ error: 'Action not found or not a backend hook' });
+        // --- Toggle Action ---
+        if (action.type === 'toggle') {
+            if (!command || (command !== 'on' && command !== 'off')) {
+                return res.status(400).json({ error: 'Toggle requires command: "on" or "off"' });
+            }
+            const url = command === 'on' ? action.on_url : action.off_url;
+            if (!url) {
+                return res.status(400).json({ error: `No ${command}_url configured for this toggle` });
+            }
+            console.log(`🔄 Toggle: [${doorId}] ${action.label} → ${command}`);
+            try {
+                const headers = { ...(action.headers || {}) };
+                const fetchOptions = { method: 'POST', headers };
+                if (action.body) {
+                    fetchOptions.body = JSON.stringify(action.body);
+                    headers['Content-Type'] = 'application/json';
+                }
+                const response = await fetch(url, fetchOptions);
+                if (!response.ok) {
+                    console.error(`Toggle command failed: ${response.status}`);
+                    return res.status(502).json({ error: `Backend returned ${response.status}` });
+                }
+                return res.json({ success: true, state: 'unknown' });
+            } catch (err) {
+                console.error('Toggle command error:', err.message);
+                return res.status(502).json({ error: 'Failed to reach toggle endpoint' });
+            }
+        }
+
+        res.status(400).json({ error: 'Action type not supported for backend execution' });
 
     } catch {
         res.status(401).send();
+    }
+});
+
+// --- Toggle Status Endpoint ---
+app.get('/api/action/status', authenticateJWT, async (req, res) => {
+    const { doorId, actionId } = req.query;
+
+    if (!doorId || !actionId) {
+        return res.status(400).json({ error: 'Missing doorId or actionId' });
+    }
+
+    const door = (config.doors || []).find(d => d.id === doorId);
+    if (!door) {
+        return res.status(404).json({ error: 'Door not found' });
+    }
+
+    const action = (door.actions || []).find(a => a.id === actionId);
+    if (!action || action.type !== 'toggle') {
+        return res.status(404).json({ error: 'Toggle action not found' });
+    }
+
+    if (!action.status_url) {
+        return res.json({ state: 'unknown' });
+    }
+
+    try {
+        const headers = { ...(action.headers || {}) };
+        const response = await fetch(action.status_url, { method: 'GET', headers });
+        if (!response.ok) {
+            console.warn(`Status fetch failed: ${response.status}`);
+            return res.json({ state: 'unknown' });
+        }
+        const data = await response.json();
+        const statusValue = data.state;
+
+        let state = 'unknown';
+        if (action.on_values && action.on_values.includes(statusValue)) {
+            state = 'on';
+        } else if (action.off_values && action.off_values.includes(statusValue)) {
+            state = 'off';
+        }
+
+        res.json({ state });
+    } catch (err) {
+        console.error('Status check error:', err.message);
+        res.json({ state: 'unknown' });
     }
 });
 
