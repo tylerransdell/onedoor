@@ -1,18 +1,18 @@
 # OneDoor 🚪 — Now with more doors and more devices.
 
+# OneDoor 🚪 — Built for the Seconds That Matter
+
 NVRs are great at recording, tracking, and reviewing events — even several at once.
 
 OneDoor is something completely different.
 
-OneDoor is built for the critical seconds that matter: the moment a guest arrives, a delivery needs direction, or a situation needs de‑escalation. It delivers the fastest possible video, the fastest possible audio, and instant control of your entryway — all in a clean, real‑time interface.
+OneDoor is built for the critical seconds where things actually happen: the moment a guest arrives, a delivery needs direction, or a situation needs de‑escalation. It delivers the fastest possible video, the fastest possible audio, and instant control of your entryway — all in a clean, real‑time interface.
 
-The v040 series is OneDoor's biggest expansion yet. It’s no longer SIP‑only. Any door, any camera, any device can now be part of the system. SIP remains the best experience, but OneDoor now supports multiple call modes and non‑SIP hardware, opening the door to an audience far beyond traditional intercom users.
+The v040+ series transformed OneDoor into a true multi‑door, multi‑device control surface. It’s up to **5× faster** than v037, supports **multiple audio modes**, and now includes **state‑aware actions** powerful enough to replace entire home‑automation dashboards. You may genuinely want to add an indoor camera or two just to play with it.
 
-Tap a notification and you’re at your door in under a second, with instant WebRTC video and full‑duplex SIP audio when available. If the scene changes, your next step — another door, your NVR, or any external system — is always one button away. And now your next camera and action set is one swipe away.
+SIP remains the best experience — full‑duplex, instant, and rock‑solid — but OneDoor is no longer SIP‑only. Any door, any camera, any device can now be part of the system. Preloaded streams, GOP caching, and primed WebRTC eliminate the 3‑second refresh penalty that plagues most doorbell apps. Even non‑SIP devices become fast, responsive, and actually usable.
 
-It plays beautifully with NVRs, home automation systems, and professional SIP door stations — without forcing you to learn telecom internals.
-
-The result is a clean, ultra‑fast door application that works seamlessly with your NVR and automation stack — modern, reliable, and tuned for the moments where speed actually matters.
+Tap a notification and you’re at your door in under a second. Swipe to another door instantly. Trigger actions, automations, relays, lights, alarms, or NVR jumps with zero hesitation. OneDoor is now both a tactical‑speed intercom and a real‑time automation console.
 
 ---
 
@@ -49,18 +49,6 @@ The result is a clean, ultra‑fast door application that works seamlessly with 
 
 ## ❤️ Why OneDoor Exists
 
-OneDoor started with a single goal: take back the seconds that actually matter.
-These are the seconds between a doorbell press or porch detection and your ability to see, hear, talk, and act.
-NVRs can’t do it. Cheap doorbells can’t do it. Even good hardware struggles.
+OneDoor started with one goal: take back the seconds that matter. But solving that problem pushed the project forward — unified Docker became a universal build, limited compatibility became support for any camera, simple actions became powerful automations, slow swiping led to preload + GOP caching, complexity demanded better docs, and growing needs created state‑aware toggles. The mission stayed the same, the feature set grew around it.
 
-So OneDoor solved that problem the only way it could be solved — by using the best real‑time tools available: WebRTC for instant video, SIP for full‑duplex audio, and a UI built for immediate action.
-
-But the v040 series changes everything. OneDoor is no longer SIP‑only.
-Any camera, any door, any device can now benefit.
-By preloading streams, caching GOPs, and priming WebRTC — eliminating the 3‑second refresh penalty that plagues most doorbell apps — even non‑SIP devices become fast, responsive, and actually usable.
-
-Once video is instant, real‑time actions become powerful: locks, alarms, lights, relays — anything you need in the moment is one tap away.
-
-OneDoor exists to put you directly inside the critical seconds where hospitality, communication, and safety actually happen.
-It welcomes guests, de‑escalates trouble, and gives you control faster than anything else in its class — fully local, fully open, and fully in your hands.
-
+OneDoor exists to put you directly inside the critical seconds where hospitality, communication, safety, and maybe a little fun actually happen.
