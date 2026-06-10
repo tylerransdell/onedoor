@@ -19,6 +19,7 @@ def provision_multi(master):
 
     onedoor_out = {
         'global': {
+            'domain': master['domain'],
             'users': users,
             'notifications': master['onedoor']['notifications'],
             'server': {'listen_port': 8099, 'token_expiry_days': master['onedoor'].get('token_expiry_days', 30)}
@@ -28,6 +29,7 @@ def provision_multi(master):
             'webrtc_name': f"camera{i+1}",
             'call_mode': d.get('call_mode', 'sip'),
             'dial_extension': 700 + (i*2),
+            'webrtc_extension': 800 + (i*2),
             'actions': d.get('actions', [])
         } for i, d in enumerate(master['moredoors'])]
     }
@@ -59,5 +61,9 @@ def provision_multi(master):
 
     try: public_ip = socket.gethostbyname(master['domain'])
     except Exception: public_ip = master['domain']
-    generate_pjsip(users, master['domain'], master.get('docker_host'), public_ip)
+    doors = [{
+        'id': d['id'],
+        'dial_extension': 700 + (i*2),
+    } for i, d in enumerate(master['moredoors'])]
+    generate_pjsip(users, master['domain'], master.get('docker_host'), public_ip, doors)
     print("🚀 Multi-door provisioning complete (Direct Config).", flush=True)

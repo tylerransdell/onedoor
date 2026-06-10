@@ -159,6 +159,7 @@ const getClientConfig = (user, token) => {
             webrtc_name: door.webrtc_name,
             call_mode: door.call_mode,
             dial_extension: door.dial_extension,
+            webrtc_extension: door.webrtc_extension,
             actions: (door.actions || []).map(action => {
                 const clientAction = {
                     id: action.id,
@@ -370,6 +371,7 @@ server.on('upgrade', (req, socket, head) => {
     socket.destroy();
 });
 
+
 // --- PUSH DISPATCHER ---
 notifier.on('send-push', async ({ target, message }) => {
     if (!PUSH_ENABLED) {
@@ -410,10 +412,11 @@ notifier.on('send-push', async ({ target, message }) => {
                     if (e.body) console.warn(`   Response: ${e.body}`);
                 }
 
+                // Prune invalid subscriptions: 404, 410, VAPID mismatch (400), Google credentials mismatch (403)
                 if (e.statusCode === 404 || e.statusCode === 410 ||
-                    (e.statusCode === 400 && e.body?.includes('VapidPkHashMismatch'))) {
-                    // Fixed typo: e.statusCod -> e.statusCode
-                    console.log(`🗑️ Pruned invalid endpoint: ${user} → ${e.statusCode} ${e.body?.includes('VapidPkHashMismatch') ? '(VAPID mismatch)' : ''}`);
+                    (e.statusCode === 400 && e.body?.includes('VapidPkHashMismatch')) ||
+                    (e.statusCode === 403 && e.body?.includes('credentials do not correspond'))) {
+                    console.log(`🗑️ Pruned invalid endpoint: ${user} → ${e.statusCode}`);
                     return null;
                 }
 

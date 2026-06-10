@@ -23,7 +23,7 @@ def run_legacy():
              for i, u in enumerate(old_onedoor.get('users', []))]
 
     normalized = {
-        'global': {'users': users, 'notifications': old_onedoor.get('notifications', {}), 'server': {'listen_port': 8099, 'token_expiry_days': old_onedoor.get('token_expiry_days') or 30}},
+        'global': {'domain': domain, 'users': users, 'notifications': old_onedoor.get('notifications', {}), 'server': {'listen_port': 8099, 'token_expiry_days': old_onedoor.get('token_expiry_days') or 30}},
         'doors': [{'id': 'legacy_door', 'webrtc_name': 'camera1', 'call_mode': 'sip', 'dial_extension': 700, 'actions': old_onedoor.get('actions', [])}]
     }
     write_yaml('/app/onedoor.yaml', normalized)
@@ -49,7 +49,8 @@ def run_legacy():
 
     try: public_ip = socket.gethostbyname(domain)
     except Exception: public_ip = domain
-    generate_pjsip(users, domain, docker_host, public_ip)
+    legacy_doors = [{'id': 'legacy_door', 'dial_extension': 700}]
+    generate_pjsip(users, domain, docker_host, public_ip, legacy_doors)
     print("✅ Legacy configuration complete (Direct Config).", flush=True)
 
 if __name__ == "__main__":

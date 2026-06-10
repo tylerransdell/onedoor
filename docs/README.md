@@ -320,6 +320,7 @@ This invalidates every existing token and forces all users to log in again.
 All WebPush registrations are stored in the `/vapid` directory.  
 To clear every registered device (or reset the notification system entirely), delete the contents of `/vapid` and restart the container.  
 New keys will be generated automatically.
+- Users may have to clear site data in order to re-register for notifications. 
 
 6.3 Generated Runtime Configuration
 

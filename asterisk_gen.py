@@ -2,7 +2,9 @@ import os
 
 ASTERISK_DIR = '/etc/asterisk'
 
-def generate_pjsip(users, domain, docker_host, public_ip):
+def generate_pjsip(users, domain, docker_host, public_ip, doors=None):
+    if doors is None:
+        doors = []
     pjsip = f"""; --- AUTO-GENERATED ---
 [transport-udp]
 type=transport
@@ -23,15 +25,22 @@ external_signaling_address={domain}
 local_net=192.168.0.0/16
 local_net=10.0.0.0/8
 domain={domain}
-
-; --- AIPHONE STATION ---
-[105]
+"""
+    for i, door in enumerate(doors):
+        ext = 105 + i
+        dial_ext = door.get('dial_extension', 700 + (i * 2))
+        ctx = 'intercom-logic' if i == 0 else f'intercom-logic{i+1}'
+        pjsip += f"""
+; --- AiPhone Station {i+1}: Door {door['id']} | Extension {dial_ext} ---
+[{ext}]
 type=endpoint
-context=intercom-logic
+context={ctx}
 disallow=all
-allow=ulaw
-auth=105_auth
-aors=105
+allow=ulaw,g722
+auth={ext}_auth
+aors={ext}
+rtp_timeout=30
+rtp_timeout_hold=30
 transport=transport-udp
 ice_support=no
 force_rport=yes
@@ -39,19 +48,19 @@ rewrite_contact=yes
 rtp_symmetric=yes
 from_domain={domain}
 media_address={docker_host}
-from_user=700
-callerid=OneDoor <700>
+from_user={dial_ext}
+callerid=OneDoor <{dial_ext}>
 trust_id_outbound=yes
 send_rpid=yes
 send_pai=yes
 
-[105_auth]
+[{ext}_auth]
 type=auth
 auth_type=userpass
-username=105
+username={ext}
 password=one2345door
 
-[105]
+[{ext}]
 type=aor
 max_contacts=1
 """
@@ -72,11 +81,13 @@ realm=asterisk
 
 [{u['pbx_username']}]
 type=endpoint
-context=intercom-logic
-disallow=all
-allow=opus
 auth={u['pbx_username']}-auth
 aors={u['pbx_username']}
+context=webrtc-inbound
+rtp_timeout=10
+rtp_timeout_hold=30
+disallow=all
+allow=opus
 transport=transport-ws
 webrtc=yes
 media_encryption=dtls

@@ -68,7 +68,6 @@
             will-change: transform;
         }
 
-        /* Portrait: Buttons fill the bar width */
         @media (orientation: portrait) {
             #controls {
                 bottom: 0; left: 0; right: 0;
@@ -88,7 +87,6 @@
             }
         }
 
-        /* Landscape: 137.5% width stretch toward center */
         @media (orientation: landscape) {
             #video-container { right: 25vw; left: 0; }
             #controls {
@@ -109,7 +107,6 @@
             }
         }
         
-        /* Disable transitions during rotation to prevent jitter */
         body.rotating #video-container,
         body.rotating #controls {
             transition: none !important;
@@ -133,7 +130,6 @@
         .btn-hangup { background: var(--red); display: none; }
         .btn-action { background: #333; border: 1px solid #444; }
 
-        /* Toggle States */
         .btn-toggle-on { background: #22c55e; color: #fff; }
         .btn-toggle-off { background: #6b7280; color: #fff; }
         .btn-toggle-unknown { background: #eab308; color: #000; cursor: not-allowed; opacity: 0.7; }
@@ -181,18 +177,17 @@ let ua, session, videoPC, configData;
 let doors = [];
 let currentDoorIndex = 0;
 let currentDoor = null;
-let localStream = null; // For Generic mode mic
+let localStream = null;
 
-// --- TOGGLE POLLING STATE ---
 let bgPollInterval = null;
-const BG_POLL_INTERVAL = 10000;  // 10 seconds
-const ACTION_POLL_INTERVAL = 2000;  // 2 seconds after action
-const ACTION_POLL_MAX = 20;  // 20 seconds max
+const BG_POLL_INTERVAL = 10000;
+const ACTION_POLL_INTERVAL = 2000;
+const ACTION_POLL_MAX = 20;
 let actionPollTimeouts = new Map();
 let actionPollCounters = new Map();
 let actionPollTargets = new Map();
 let actionPollBtns = new Map();
-let fastPollingIds = new Set();  // actions currently in fast-poll mode
+let fastPollingIds = new Set();
 
 const API = window.location.origin;
 const $ = id => document.getElementById(id);
@@ -208,7 +203,6 @@ function unmuteAudio() {
     $('audio-blocker').style.display = 'none';
 }
 
-// --- NAVIGATION ---
 function nextDoor() {
     if (doors.length === 0) return;
     currentDoorIndex = (currentDoorIndex + 1) % doors.length;
@@ -221,7 +215,6 @@ function prevDoor() {
     renderDoor();
 }
 
-// Swipe support
 let touchStartX = 0;
 $('video-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, { passive: true });
 $('video-container').addEventListener('touchend', e => {
@@ -232,11 +225,9 @@ $('video-container').addEventListener('touchend', e => {
     }
 }, { passive: true });
 
-// --- MEDIA LOGIC (go2rtc) ---
 async function loadMedia(door) {
     if (videoPC) videoPC.close();
     
-    // Reset UI state for new door
     $('video').muted = true; 
     $('video').srcObject = null;
     $('remoteAudio').srcObject = null;
@@ -248,7 +239,6 @@ async function loadMedia(door) {
             const v = $('video');
             v.srcObject = e.streams[0];
             
-            // Auto-unmute for 'none' and 'generic' (video carries audio)
             if (door.call_mode === 'none' || door.call_mode === 'generic') {
                 v.muted = false;
                 v.play().catch(err => console.warn("Video play pending interaction"));
@@ -260,16 +250,13 @@ async function loadMedia(door) {
 
     videoPC.addTransceiver('video', { direction: 'recvonly' });
 
-    // Audio handling based on mode
     if (door.call_mode === 'sip') {
         videoPC.addTransceiver('audio', { direction: 'inactive' });
     } 
     else if (door.call_mode === 'generic') {
-        // Two-way audio. We need to add local mic track if available.
         if (!localStream) {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                // Mute by default until "Call" is pressed
                 localStream.getAudioTracks().forEach(t => t.enabled = false);
             } catch (e) {
                 console.warn("Mic permission denied. Falling back to listen-only.");
@@ -282,7 +269,7 @@ async function loadMedia(door) {
             videoPC.addTransceiver('audio', { direction: 'recvonly' });
         }
     } 
-    else { // 'none'
+    else {
         videoPC.addTransceiver('audio', { direction: 'recvonly' });
     }
 
@@ -307,7 +294,6 @@ async function loadMedia(door) {
     }
 }
 
-// --- SIP LOGIC ---
 function setupSIP() {
     const wsUrl = `wss://${location.host}/ws?ws_token=${encodeURIComponent(configData.ws_token)}`;
     const socket = new JsSIP.WebSocketInterface(wsUrl);
@@ -367,7 +353,7 @@ function startCall() {
             mediaConstraints: { audio: true, video: false },
             pcConfig: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
         };
-        ua.call(`sip:${currentDoor.dial_extension}@${location.hostname}`, options);
+        ua.call(`sip:${currentDoor.webrtc_extension}@${location.hostname}`, options);
     } 
     else if (currentDoor.call_mode === 'generic') {
         toggleMic(true);
@@ -413,19 +399,15 @@ function resetUI() {
     setStatus('READY');
 }
 
-// --- RENDER DOOR ---
 function renderDoor() {
     if (!doors.length) return;
     currentDoor = doors[currentDoorIndex];
     
-    // Update Title
     $('door-title').textContent = currentDoor.id.replace(/_/g, ' ');
 
-    // Update Controls
     const ctrl = $('controls');
     ctrl.innerHTML = '';
 
-    // 1. Call/End Button (SIP & Generic only)
     if (currentDoor.call_mode === 'sip' || currentDoor.call_mode === 'generic') {
         const callBtn = document.createElement('button');
         callBtn.id = 'callBtn';
@@ -442,7 +424,6 @@ function renderDoor() {
         ctrl.appendChild(hangBtn);
     }
 
-    // 2. Actions (Limit to 4 total buttons including call button)
     const maxActions = (currentDoor.call_mode === 'sip' || currentDoor.call_mode === 'generic') ? 3 : 4;
     const actions = (currentDoor.actions || []).slice(0, maxActions);
     
@@ -452,7 +433,6 @@ function renderDoor() {
         btn.dataset.actionId = action.id;
         btn.innerHTML = `${action.icon || '⚡'} ${action.label}`;
 
-        // Toggle state styling
         if (action.type === 'toggle') {
             applyToggleStyle(btn, action.state);
         }
@@ -461,17 +441,11 @@ function renderDoor() {
         ctrl.appendChild(btn);
     });
 
-    // 3. Load Media
     loadMedia(currentDoor);
-
-    // 4. Start background polling for toggle states
     startBackgroundPolling();
-
-    // Reset UI state
     resetUI();
 }
 
-// --- TOGGLE POLLING ---
 function applyToggleStyle(btn, state) {
     btn.classList.remove('btn-toggle-on', 'btn-toggle-off', 'btn-toggle-unknown');
     if (state === 'on') {
@@ -587,7 +561,6 @@ function startActionPolling(action, btn, desiredState) {
     poll();
 }
 
-// --- ACTION LOGIC ---
 async function runAction(action, btn) {
     if (action.type === 'dtmf') {
         if (currentDoor.call_mode === 'sip' && session) {
@@ -643,7 +616,6 @@ async function runAction(action, btn) {
     setTimeout(() => setStatus(session?.isEstablished() ? 'IN CALL' : 'READY'), 2000);
 }
 
-// --- ORIENTATION HANDLER ---
 let orientationTimeout;
 let lastOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
 
@@ -654,29 +626,23 @@ function handleOrientationChange() {
     clearTimeout(orientationTimeout);
     document.body.classList.add('rotating');
     
-    // Use requestAnimationFrame to wait for the next paint cycle
     requestAnimationFrame(() => {
-        // Force a reflow by reading a layout property
         void document.body.offsetHeight;
         
         orientationTimeout = setTimeout(() => {
             lastOrientation = currentOrientation;
             document.body.classList.remove('rotating');
-            
-            // Force another reflow after removing the class
             void document.body.offsetHeight;
-        }, 100); // Reduced delay
+        }, 100);
     });
 }
 
-// Use orientationchange event if available, fallback to resize
 if ('onorientationchange' in window) {
     window.addEventListener('orientationchange', handleOrientationChange);
 } else {
     window.addEventListener('resize', handleOrientationChange);
 }
 
-// --- AUTH & INIT ---
 async function doLogin(event) {
     event.preventDefault();
     const u = $('username').value, p = $('password').value;
@@ -706,7 +672,7 @@ window.onload = () => {
 
 async function initApp() {
     $('login').classList.add('hidden');
-    $('controls').style.display = 'flex'; // Or grid, handled by CSS
+    $('controls').style.display = 'flex';
     
     doors = configData.doors || [];
     if (doors.length === 0) {
@@ -714,7 +680,6 @@ async function initApp() {
         return;
     }
 
-    // Deep Link Handling
     const params = new URLSearchParams(window.location.search);
     const targetDoorId = params.get('door');
     if (targetDoorId) {
@@ -723,11 +688,10 @@ async function initApp() {
     }
 
     renderDoor();
-    setupSIP(); // Init SIP UA once
+    setupSIP();
     initPushFlow();
 }
 
-// ... [Keep Push Logic exactly as before] ...
 const PUSH_LATER_KEY = 'onedoor_push_later';
 const PUSH_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
