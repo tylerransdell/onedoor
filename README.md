@@ -1,5 +1,3 @@
-# OneDoor 🚪 — Now with more doors and more devices.
-
 # OneDoor 🚪 — Built for the Seconds That Matter
 
 NVRs are great at recording, tracking, and reviewing events — even several at once.
