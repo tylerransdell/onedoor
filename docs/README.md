@@ -54,6 +54,7 @@ Required on-device SIP settings:
 - Password: one2345door
 - Dial extension: see door mapping
 - Auto‑answer must be enabled
+- Audio: ulaw or g722
 - Aiphone requires relay wiring for auto‑answer
 
 Multi‑Door SIP Assignments (v040+)
@@ -182,30 +183,190 @@ Notes:
 
 Each door can have action buttons. Actions are defined per-door in config.yaml under the `actions` list.
 
-4.1 Hook Actions
+4.1 Authentication
 
-Simple webhook trigger. Fires a POST request to a URL.
+All hook and toggle actions support a structured `auth` field. Auth credentials stay server-side — the frontend never sees them. You can also add `auth:` to toggle status polls so the status endpoint is authenticated too.
 
-Configuration:
-- type: "hook"
-- url: Target URL
-- headers: Optional HTTP headers (e.g., Authorization for Home Assistant)
-- body: Optional JSON body
+If no `auth` field is specified, requests are sent with no authentication (same as `type: "none"`).
 
-Example:
+| Type | Use Case | Required Fields |
+|------|----------|-----------------|
+| `none` | Open endpoints, local APIs | — (or omit `auth` entirely) |
+| `bearer` | Home Assistant, cloud APIs | `token` |
+| `basic` | Simple HTTP auth, relays | `username`, `password` |
+| `digest` | Dahua cameras, older devices | `username`, `password` |
+
+The `content_type` field controls the request body format. Default is `application/json`. Use `application/x-www-form-urlencoded` for form-based endpoints. Headers are auto-set based on content_type + auth, but you can still add custom `headers:` alongside `auth:`.
+
+The `method` field controls the HTTP method (case-insensitive). Default is `"GET"`. Set to `"POST"` for endpoints that require POST requests (Home Assistant, etc.). For Dahua cameras, use `"GET"` since all parameters go in the URL.
+
+Legacy `headers: { Authorization: "Bearer ..." }` still works for backward compatibility.
+
+### Zero Auth (no auth)
+
+For open endpoints that require no authentication. Just omit the `auth` field entirely:
+
 ```yaml
-- id: "porch_light"
+- id: "gate_relay"
+  label: "Gate"
+  type: "hook"
+  url: "http://192.168.1.66/gate"
+  icon: "🚧"
+```
+
+Or explicitly:
+
+```yaml
+- id: "gate_relay"
+  label: "Gate"
+  type: "hook"
+  url: "http://192.168.1.66/gate"
+  icon: "🚧"
+  auth:
+    type: "none"
+```
+
+Works for toggles too — when `auth` is omitted, all three URLs (on, off, status) are called without authentication:
+
+```yaml
+- id: "open_door"
+  label: "Open Door"
+  type: "toggle"
+  icon: "🚪"
+  on_url: "http://192.168.1.66/door/open"
+  off_url: "http://192.168.1.66/door/close"
+  status_url: "http://192.168.1.66/door/status"
+  on_values: ["open"]
+  off_values: ["closed"]
+```
+
+### Home Assistant (bearer token)
+
+Home Assistant uses long-lived bearer tokens. Put the token in `auth:` and HA gets it automatically on every call — hook commands, toggle on/off, and status polls all authenticated:
+
+```yaml
+- id: "ha_light"
   label: "Porch Light"
   type: "hook"
   url: "http://192.168.1.100:8123/api/services/light/turn_on"
   icon: "💡"
-  headers:
-    Authorization: "Bearer YOUR_LONG_LIVED_TOKEN"
+  auth:
+    type: "bearer"
+    token: "YOUR_LONG_LIVED_TOKEN"
   body:
     entity_id: "light.porch"
 ```
 
-4.2 DTMF Actions
+Toggle with HA bearer — same auth block applies to on_url, off_url, and status_url:
+
+```yaml
+- id: "garage_door"
+  label: "Garage"
+  type: "toggle"
+  icon: "🚗"
+  on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
+  off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
+  status_url: "http://192.168.1.100:8123/api/states/cover.garage"
+  on_values: ["open"]
+  off_values: ["closed"]
+  auth:
+    type: "bearer"
+    token: "YOUR_LONG_LIVED_TOKEN"
+  body:
+    entity_id: "cover.garage"
+```
+
+### Dahua Cameras (digest auth)
+
+Dahua cameras use HTTP digest auth. The server handles the challenge-response automatically:
+
+```yaml
+# Turn on Dahua illuminator (GET request — Dahua setConfig uses URL parameters)
+- id: "dahua_light_on"
+  label: "Floodlight"
+  type: "hook"
+  url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][0][0].Mode=Manual&Lighting_V2[0][0][0].FarLight[0].Light=100&Lighting_V2[0][0][0].NearLight[0].Light=100"
+  icon: "🔦"
+  method: "GET"
+  auth:
+    type: "digest"
+    username: "admin"
+    password: "YOUR_DAHUA_PASSWORD"
+```
+
+Toggle a Dahua relay output — digest auth for both commands and status. Uses `status_key` to extract the specific config line from Dahua's multi-line response:
+
+```yaml
+- id: "dahua_relay"
+  label: "Dahua Relay"
+  type: "toggle"
+  icon: "⚡"
+  method: "GET"
+  on_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Relay[0].Enable=true"
+  off_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Relay[0].Enable=false"
+  status_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=getConfig&name=Relay"
+  status_key: "table.Relay[0].Enable"
+  on_values: ["true"]
+  off_values: ["false"]
+  auth:
+    type: "digest"
+    username: "admin"
+    password: "YOUR_DAHUA_PASSWORD"
+```
+
+### Dahua Lighting Status (status_key)
+
+Dahua's `getConfig` returns a plain-text dump with many lines. Use `status_key` to extract just the one you need. For example, if the camera returns:
+
+```
+table.Lighting_V2[0][0][0].Mode=Off
+many things
+table.Lighting_V2[0][1][0].Mode=Off
+more things
+table.Lighting_V2[0][2][0].Mode=On
+```
+
+You only care about `[0][2][0]` (the third entry). Set `status_key` to match that exact line prefix, and `on_values`/`off_values` to match the value after `=`:
+
+```yaml
+- id: "dahua_floodlight"
+  label: "Floodlight"
+  type: "toggle"
+  icon: "🔦"
+  method: "GET"
+  on_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][2][0].Mode=Manual&Lighting_V2[0][2][0].FarLight[0].Light=100"
+  off_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][2][0].Mode=Off"
+  status_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=getConfig&name=Lighting_V2"
+  status_key: "table.Lighting_V2[0][2][0].Mode"
+  on_values: ["Manual"]
+  off_values: ["Off"]
+  auth:
+    type: "digest"
+    username: "admin"
+    password: "YOUR_DAHUA_PASSWORD"
+```
+
+The `status_key` matches the line prefix, and the value after `=` is compared against your `on_values`/`off_values`.
+
+If no `status_key`, OneDoor looks in the "state" field first and then tries to find the first matching word in the entire payload.
+
+### Basic Auth
+
+For devices that use HTTP Basic auth (some relays, IoT devices, etc.):
+
+```yaml
+- id: "relay"
+  label: "Relay"
+  type: "hook"
+  url: "http://192.168.1.50/relay/on"
+  icon: "⚡"
+  auth:
+    type: "basic"
+    username: "admin"
+    password: "secret"
+```
+
+4.3 DTMF Actions
 
 Sends a DTMF payload to the intercom (e.g., for door locks).
 
@@ -222,9 +383,9 @@ Example:
   icon: "🔒"
 ```
 
-4.3 Link Actions
+4.4 Link Actions
 
-Opens a URL in a new tab.
+Opens a URL in a new tab. Links are the only action type where the URL is sent to the frontend.
 
 Configuration:
 - type: "link"
@@ -239,19 +400,22 @@ Example:
   icon: "🚪"
 ```
 
-4.4 State-Aware Toggle Actions (v041+)
+4.5 State-Aware Toggle Actions (v041+)
 
-Toggle actions track the on/off state of a device by polling a status endpoint. The frontend only receives "on", "off", or "unknown" — all URL handling and state matching occurs server-side.
+Toggle actions track the on/off state of a device by polling a status endpoint. The frontend only receives "on", "off", or "unknown" — all URL handling, auth, and state matching occurs server-side.
 
 Configuration:
 - type: "toggle"
 - on_url: URL to call when turning device on (backend only)
 - off_url: URL to call when turning device off (backend only)
 - status_url: URL to poll for current state (backend only)
+- status_key: Optional key path to extract from the response (e.g. `"table.Lighting_V2[0][2][0].Mode"` for Dahua, or `"attributes.state"` for nested JSON). If omitted, checks `data.state` first, then searches the full response.
 - on_values: Array of state values meaning "on" (e.g., ["open", "on"])
 - off_values: Array of state values meaning "off" (e.g., ["closed", "off"])
-- headers: Optional HTTP headers (e.g., Authorization for Home Assistant)
-- body: Optional JSON body
+- method: Optional HTTP method (default: `"GET"`). Use `"POST"` for Home Assistant and other JSON POST APIs.
+- auth: Authentication block (see 4.1)
+- content_type: Optional (default: "application/json")
+- body: Optional request body
 
 Example (Home Assistant cover):
 ```yaml
@@ -264,8 +428,9 @@ Example (Home Assistant cover):
   status_url: "http://192.168.1.100:8123/api/states/cover.garage"
   on_values: ["open"]
   off_values: ["closed"]
-  headers:
-    Authorization: "Bearer YOUR_LONG_LIVED_TOKEN"
+  auth:
+    type: "bearer"
+    token: "YOUR_LONG_LIVED_TOKEN"
   body:
     entity_id: "cover.garage"
 ```
@@ -320,7 +485,6 @@ This invalidates every existing token and forces all users to log in again.
 All WebPush registrations are stored in the `/vapid` directory.  
 To clear every registered device (or reset the notification system entirely), delete the contents of `/vapid` and restart the container.  
 New keys will be generated automatically.
-- Users may have to clear site data in order to re-register for notifications. 
 
 6.3 Generated Runtime Configuration
 

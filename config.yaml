@@ -1,8 +1,8 @@
 # ==============================================================================
 # MASTER CONFIGURATION
 # ==============================================================================
-domain:  # "door.yourdomain.com"
-docker_host: # "192.168.1.26"
+domain:  # "door.yourdomain.com" 
+docker_host: # "192.168.1.26"  <-----local docker machine
 
 # Global settings for the app and authentication
 onedoor:
@@ -24,7 +24,7 @@ moredoors:
     actions:
       - id: #"front_light" - generic id
         label: #"light" - this is button text
-        type: #"hook" hook, dtmf, or link
+        type: #"hook" hook, dtmf, link, or toggle
         url: #"http://192.168.1.66/light" - url for hook or link, payload for dtmf 
         icon: #"🔆" - icon on button
       - id: #"front_lock" - remove unused or add more.
@@ -32,29 +32,82 @@ moredoors:
         type: #"dtmf"
         payload: #"1234"
         icon: #"🔒"
-# - id: "side" - more camera/door list works like this
-#   call_mode:
-#   camera: camera or list of streams as per go2rtc
-#   actions: new actions schema below
-#     - id: ha_light
-#       label: "HA Light"
-#       type: "hook"   <<<---------- more advanced home assistant hook
-#       url: "http://192.168.1.100:8123/api/services/light/turn_on"
-#       icon: "💡"
-#       headers:
-#         Authorization: "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOi..."
-#       body:
-#         entity_id: "light.front_porch"
-#     - id: "garage_door"
-#       label: "Garage"
-#       type: "toggle"   <<<<<<----------------- state-aware toggle
-#       icon: "🚗"
-#       on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
-#       off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
-#       status_url: "http://192.168.1.100:8123/api/states/cover.garage"
-#       on_values: ["open"]
-#       off_values: ["closed"]
-#       headers:
-#         Authorization: "Bearer fdlkj54j6lk54jtlrekjg5jlmk..."
-#       body:
-#         entity_id: "cover.garage":8123/api/services/cover/open_cover"
+  # - id: "side" - more camera/door list works like this
+  #   call_mode:
+  #   camera: camera or list of streams as per go2rtc
+  #   actions:
+  #     - id: "ha_light" <<---- home assistant bearer auth
+  #       label: "HA Light"
+  #       type: "hook"
+  #       method: "post"
+  #       url: "http://192.168.1.100:8123/api/services/light/turn_on"
+  #       icon: "💡"
+  #       auth:
+  #         type: "bearer"
+  #         token: "YOUR_LONG_LIVED_TOKEN"
+  #       body:
+  #         entity_id: "light.front_porch"
+  #     - id: "dahua_light"
+  #       label: "Dahua Light"
+  #       type: "hook"
+  #       method: "get"  <<------- get is default/optional. can use "post" also
+  #       url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][0][0].Mode=Manual"
+  #       icon: "🔦"
+  #       auth:
+  #         type: "digest"
+  #         username: "admin"
+  #         password: "YOUR_DAHUA_PASSWORD"
+  #     - id: "basic_relay"
+  #       label: "Relay"
+  #       type: "hook"
+  #       url: "http://192.168.1.50/relay/on"
+  #       icon: "⚡"
+  #       auth:
+  #         type: "basic"
+  #         username: "admin"
+  #         password: "secret"
+  #     - id: "garage_door"
+  #       label: "Garage"
+  #       type: "toggle"
+  #       method: "post"
+  #       icon: "🚗"
+  #       on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
+  #       off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
+  #       status_url: "http://192.168.1.100:8123/api/states/cover.garage"
+  #       on_values: ["open"]
+  #       off_values: ["closed"]
+  #       auth:
+  #         type: "bearer"
+  #         token: "YOUR_LONG_LIVED_TOKEN"
+  #       body:
+  #         entity_id: "cover.garage"
+  #     - id: "ha_form_toggle"
+  #       label: "Switch"
+  #       type: "toggle"
+  #       icon: "🔌"
+  #       on_url: "http://192.168.1.100:8123/api/services/switch/turn_on"
+  #       off_url: "http://192.168.1.100:8123/api/services/switch/turn_off"
+  #       status_url: "http://192.168.1.100:8123/api/states/switch.plug"
+  #       on_values: ["on"]
+  #       off_values: ["off"]
+  #       auth:
+  #         type: "bearer"
+  #         token: "YOUR_LONG_LIVED_TOKEN"
+  #       content_type: "application/json"   <<<<------ default when body is present no need to put here unless changing
+  #       body:
+  #         entity_id: "switch.plug"
+  #     - id: "dahua_lighting"
+  #       label: "Floodlight"
+  #       type: "toggle"
+  #       icon: "🔦"
+  #       method: "GET"
+  #       on_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][2][0].Mode=Manual&Lighting_V2[0][2][0].FarLight[0].Light=100"
+  #       off_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][2][0].Mode=Off"
+  #       status_url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=getConfig&name=Lighting_V2"
+  #       status_key: "table.Lighting_V2[0][2][0].Mode"
+  #       on_values: ["Manual"]
+  #       off_values: ["Off"]
+  #       auth:
+  #         type: "digest"
+  #         username: "admin"
+  #         password: "YOUR_DAHUA_PASSWORD"

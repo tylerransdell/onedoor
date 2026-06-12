@@ -9,6 +9,171 @@ const http = require('http');
 const crypto = require('crypto');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
+// --- UNIVERSAL AUTH FETCH ---
+// Supports: none, basic, bearer, digest
+async function fetchWithAuth({ url, method, action, body, userHeaders = {} }) {
+    // Use action.method if specified, otherwise default to GET
+    method = (method || action.method || 'GET').toUpperCase();
+    const auth = action.auth || { type: 'none' };
+    const contentType = action.content_type || 'application/json';
+
+    // Build base headers from action.headers (user can still add custom headers)
+    const headers = { ...(action.headers || {}), ...userHeaders };
+
+    // Remove any existing Authorization from custom headers if auth is configured
+    // so our structured auth takes precedence
+    if (auth.type && auth.type !== 'none') {
+        delete headers.Authorization;
+    }
+
+    // --- Inject structured auth ---
+    if (auth.type === 'basic') {
+        const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
+        headers['Authorization'] = `Basic ${encoded}`;
+    } else if (auth.type === 'bearer') {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+    }
+    // digest handled below with challenge-response
+
+    // --- Prepare body (only for methods that carry a payload) ---
+    let fetchBody = undefined;
+    if (body && method !== 'GET' && method !== 'HEAD') {
+        if (body instanceof Buffer || body instanceof URLSearchParams || typeof body === 'string') {
+            fetchBody = body;
+        } else if (contentType.includes('x-www-form-urlencoded')) {
+            fetchBody = new URLSearchParams(body).toString();
+        } else {
+            fetchBody = JSON.stringify(body);
+        }
+    }
+    // Only set Content-Type when we actually have a body to send
+    if (fetchBody) {
+        headers['Content-Type'] = contentType;
+    }
+
+    // --- Perform fetch ---
+    const doFetch = (authHeader) => {
+        const h = authHeader ? { ...headers, Authorization: authHeader } : { ...headers };
+        return fetch(url, {
+            method,
+            headers: h,
+            body: fetchBody,
+            signal: AbortSignal.timeout(action.timeout || 10000)
+        });
+    };
+
+    // --- Digest auth: first request gets 401 with challenge, second sends response ---
+    if (auth.type === 'digest') {
+        // Step 1: Initial request (no auth header) to get the challenge
+        const challengeRes = await doFetch(null);
+        if (challengeRes.status !== 401) {
+            // Server didn't challenge — maybe it accepts without auth, return what we got
+            return challengeRes;
+        }
+        const wwwAuth = challengeRes.headers.get('www-authenticate');
+        if (!wwwAuth || !wwwAuth.toLowerCase().startsWith('digest')) {
+            console.warn(`⚠️ Digest auth requested but server sent: ${wwwAuth}`);
+            return challengeRes;
+        }
+
+        // Step 2: Parse the digest challenge
+        const digest = parseDigestChallenge(wwwAuth);
+
+        // Step 3: Build the digest response
+        const ha1 = md5hex(`${auth.username}:${digest.realm}:${auth.password}`);
+        const ha2 = md5hex(`${method}:${new URL(url).pathname}`);
+        const nc = '00000001';
+        const cnonce = crypto.randomBytes(8).toString('hex');
+        const response = md5hex(`${ha1}:${digest.nonce}:${nc}:${cnonce}:${digest.qop || 'auth'}:${ha2}`);
+
+        let authValue = `Digest username="${auth.username}", realm="${digest.realm}", nonce="${digest.nonce}", uri="${new URL(url).pathname}", response="${response}"`;
+        if (digest.qop) {
+            authValue += `, qop=${digest.qop}, nc=${nc}, cnonce="${cnonce}"`;
+        }
+        if (digest.opaque) {
+            authValue += `, opaque="${digest.opaque}"`;
+        }
+
+        return doFetch(authValue);
+    }
+
+    // --- All other auth types: single request ---
+    return doFetch(headers['Authorization'] || null);
+}
+
+function parseDigestChallenge(header) {
+    const result = {};
+    const regex = /(\w+)=(?:"([^"]+)"|(\S+))/g;
+    let match;
+    while ((match = regex.exec(header)) !== null) {
+        result[match[1].toLowerCase()] = match[2] || match[3];
+    }
+    return result;
+}
+
+function md5hex(str) {
+    return crypto.createHash('md5').update(str).digest('hex');
+}
+
+// Recursively search a JSON response for a value matching on_values or off_values
+function findStateValue(data) {
+    if (data === null || data === undefined || typeof data !== 'object') return undefined;
+    // Check top-level string/number values
+    for (const key of Object.keys(data)) {
+        const val = data[key];
+        if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+            // Return the first primitive value found (common patterns: {"state":"open"}, {"value":"on"}, {"status":"active"})
+            return String(val);
+        }
+    }
+    // If no primitives at top level, recurse into nested objects/arrays
+    for (const key of Object.keys(data)) {
+        const val = data[key];
+        if (typeof val === 'object' && val !== null) {
+            const found = findStateValue(val);
+            if (found !== undefined) return found;
+        }
+    }
+    return undefined;
+}
+
+// Get a value from an object by key path.
+// First tries a direct key match (for flat keys like Dahua's "table.Lighting_V2[0][2][0].Mode"),
+// then falls back to dot-notation walk (for nested JSON like "attributes.state").
+function getNestedValue(obj, path) {
+    // Direct match first — handles flat key names that contain dots (Dahua, etc.)
+    if (obj.hasOwnProperty(path)) {
+        return String(obj[path]);
+    }
+    // Dot-notation walk for nested JSON
+    const keys = path.split('.');
+    let current = obj;
+    for (const key of keys) {
+        if (current === null || current === undefined || typeof current !== 'object') {
+            return undefined;
+        }
+        current = current[key];
+    }
+    return current !== undefined ? String(current) : undefined;
+}
+
+// Parse plain-text key=value response (Dahua getConfig, etc.)
+// "table.Lighting_V2[0][2][0].Mode=Manual" → { "table.Lighting_V2[0][2][0].Mode": "Manual" }
+function parsePlainTextResponse(text) {
+    const result = {};
+    const lines = text.split('\n');
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIndex = trimmed.indexOf('=');
+        if (eqIndex === -1) continue;
+        const key = trimmed.substring(0, eqIndex).trim();
+        const value = trimmed.substring(eqIndex + 1).trim();
+        if (key) result[key] = value;
+    }
+    return result;
+}
+
 // --- NOTIFY ---
 const EventEmitter = require('events');
 const webPush = require('web-push');
@@ -248,20 +413,19 @@ app.post('/api/action', async (req, res) => {
             return res.status(404).json({ error: 'Action not found' });
         }
 
-        // --- Enhanced Hook (supports headers + body) ---
+        // --- Hook Action (universal auth + content-type) ---
         if (action.type === 'hook') {
-            console.log(`🔌 Hook: [${doorId}] ${action.label}`);
-            const options = { method: 'POST' };
-            if (action.headers) options.headers = { ...action.headers };
-            if (action.body) {
-                options.body = JSON.stringify(action.body);
-                options.headers = { ...(options.headers || {}), 'Content-Type': 'application/json' };
-            }
-            fetch(action.url, options).catch(err => console.error('Hook failed:', err.message));
+            console.log(`🔌 Hook: [${doorId}] ${action.label} (${(action.auth || {}).type || 'none'})`);
+            fetchWithAuth({
+                url: action.url,
+                method: action.method,  // use action.method if set, else defaults to GET in fetchWithAuth
+                action,
+                body: action.body || undefined,
+            }).catch(err => console.error('Hook failed:', err.message));
             return res.json({ success: true });
         }
 
-        // --- Toggle Action ---
+        // --- Toggle Action (universal auth + content-type) ---
         if (action.type === 'toggle') {
             if (!command || (command !== 'on' && command !== 'off')) {
                 return res.status(400).json({ error: 'Toggle requires command: "on" or "off"' });
@@ -270,15 +434,14 @@ app.post('/api/action', async (req, res) => {
             if (!url) {
                 return res.status(400).json({ error: `No ${command}_url configured for this toggle` });
             }
-            console.log(`🔄 Toggle: [${doorId}] ${action.label} → ${command}`);
+            console.log(`🔄 Toggle: [${doorId}] ${action.label} → ${command} (${(action.auth || {}).type || 'none'})`);
             try {
-                const headers = { ...(action.headers || {}) };
-                const fetchOptions = { method: 'POST', headers };
-                if (action.body) {
-                    fetchOptions.body = JSON.stringify(action.body);
-                    headers['Content-Type'] = 'application/json';
-                }
-                const response = await fetch(url, fetchOptions);
+                const response = await fetchWithAuth({
+                    url,
+                    method: action.method,  // use action.method if set, else defaults to GET in fetchWithAuth
+                    action,
+                    body: action.body || undefined,
+                });
                 if (!response.ok) {
                     console.error(`Toggle command failed: ${response.status}`);
                     return res.status(502).json({ error: `Backend returned ${response.status}` });
@@ -320,20 +483,45 @@ app.get('/api/action/status', authenticateJWT, async (req, res) => {
     }
 
     try {
-        const headers = { ...(action.headers || {}) };
-        const response = await fetch(action.status_url, { method: 'GET', headers });
+        const response = await fetchWithAuth({
+            url: action.status_url,
+            method: 'GET',
+            action,
+        });
         if (!response.ok) {
             console.warn(`Status fetch failed: ${response.status}`);
             return res.json({ state: 'unknown' });
         }
-        const data = await response.json();
-        const statusValue = data.state;
+        // Try JSON first, fall back to plain-text key=value parsing (Dahua, etc.)
+        let data = await response.text();
+        try {
+            data = JSON.parse(data);
+        } catch {
+            // Plain text response — parse "key=value" lines into an object
+            data = parsePlainTextResponse(data);
+        }
+
+        // Resolve the status value from the response
+        let statusValue;
+        if (action.status_key) {
+            statusValue = getNestedValue(data, action.status_key);
+        } else {
+            statusValue = data.state;
+            if (statusValue === undefined) {
+                statusValue = findStateValue(data);
+            }
+        }
 
         let state = 'unknown';
-        if (action.on_values && action.on_values.includes(statusValue)) {
+        if (statusValue !== undefined && action.on_values && action.on_values.includes(statusValue)) {
             state = 'on';
-        } else if (action.off_values && action.off_values.includes(statusValue)) {
+        } else if (statusValue !== undefined && action.off_values && action.off_values.includes(statusValue)) {
             state = 'off';
+        }
+
+        console.log(`🔍 Status [${door.id}/${action.id}]: key="${action.status_key || 'auto'}" value="${statusValue}" on=${JSON.stringify(action.on_values)} off=${JSON.stringify(action.off_values)} → ${state}`);
+        if (statusValue === undefined) {
+            console.log(`   Full response keys: ${JSON.stringify(Object.keys(data)).substring(0, 200)}`);
         }
 
         res.json({ state });
