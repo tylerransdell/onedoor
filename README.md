@@ -22,8 +22,7 @@ Speed comes from **server‑side preload + GOP caching**, not from overworking t
 
 | Mobile App | Desktop Widget |
 |-----------|----------------|
-| <img src="screenshots/mobile_view.png" height="380"> | [Desktop Widget Preview](screenshots/widget.mp4) |
-
+| <img src="screenshots/mobile_view.png" height="380"> | https://raw.githubusercontent.com/yourrepo/onedoor/main/screenshots/widget.mp4 |
 
 ---
 
