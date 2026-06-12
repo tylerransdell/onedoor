@@ -16,13 +16,18 @@ Tap a notification and you’re at your door in under a second. Swipe to another
 
 ## 📸 Interface Preview
 
+## 📸 Interface Preview
+
 OneDoor’s interface is intentionally minimal: a single, native‑resolution stream.  
 Only **one** stream is ever active at a time, keeping CPU/GPU usage extremely low.  
 Speed comes from **server‑side preload + GOP caching**, not from overworking the client.
 
-| Mobile App | Desktop Widget |
-|-----------|----------------|
-| <img src="screenshots/mobile_view.png" height="380"> | https://raw.githubusercontent.com/tylerransdell/onedoor/dev/screenshots/widget.mp4 |
+### Mobile App
+<img src="screenshots/mobile_view.png" height="380">
+
+### Desktop Widget (Video Preview)
+https://raw.githubusercontent.com/tylerransdell/onedoor/dev/screenshots/widget.mp4
+
 
 ---
 
