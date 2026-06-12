@@ -22,7 +22,7 @@ Speed comes from **server‑side preload + GOP caching**, not from overworking t
 
 | Mobile App | Desktop Widget |
 |-----------|----------------|
-| <img src="screenshots/mobile_view.png" height="380"> | <a href="screenshots/widget.mp4">▶️ Desktop Widget Preview</a> |
+| <img src="screenshots/mobile_view.png" height="380"> | [Desktop Widget Preview](screenshots/widget.mp4) |
 
 
 ---
