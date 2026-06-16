@@ -28,6 +28,7 @@ def provision_multi(master):
             'id': d['id'],
             'webrtc_name': f"camera{i+1}",
             'call_mode': d.get('call_mode', 'sip'),
+            'video_fit': d.get('video_fit', 'dynamic'),
             'dial_extension': 700 + (i*2),
             'webrtc_extension': 800 + (i*2),
             'actions': d.get('actions', [])

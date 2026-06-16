@@ -33,7 +33,7 @@
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             touch-action: pan-y;
         }
-        video { width: 100%; height: 100%; object-fit: cover; background: #000; will-change: transform; transform: translateZ(0); }
+        video { width: 100%; height: 100%; background: #000; will-change: transform; transform: translateZ(0); }
 
         #door-title {
             position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
@@ -193,6 +193,24 @@ const API = window.location.origin;
 const $ = id => document.getElementById(id);
 const setStatus = t => { $('status').textContent = t.toUpperCase(); };
 
+function updateVideoFit() {
+    const v = $('video');
+    if (!v.videoWidth || !v.videoHeight) return;
+    const mode = currentDoor?.video_fit || 'dynamic';
+    if (mode === 'zoom') {
+        v.style.objectFit = 'cover';
+    } else if (mode === 'full') {
+        v.style.objectFit = 'contain';
+    } else {
+        // dynamic: cover if orientations match, contain if not
+        const vidAspect = v.videoWidth / v.videoHeight;
+        const screenAspect = window.innerWidth / window.innerHeight;
+        const vidLandscape = vidAspect >= 1;
+        const screenLandscape = screenAspect >= 1;
+        v.style.objectFit = (vidLandscape === screenLandscape) ? 'cover' : 'contain';
+    }
+}
+
 function unmuteAudio() {
     if (currentDoor?.call_mode === 'sip') {
         $('remoteAudio').play();
@@ -238,7 +256,9 @@ async function loadMedia(door) {
         if (e.streams[0]) {
             const v = $('video');
             v.srcObject = e.streams[0];
-            
+            v.addEventListener('loadedmetadata', updateVideoFit, { once: true });
+            window.addEventListener('resize', updateVideoFit);
+
             if (door.call_mode === 'none' || door.call_mode === 'generic') {
                 v.muted = false;
                 v.play().catch(err => console.warn("Video play pending interaction"));
@@ -424,7 +444,7 @@ function renderDoor() {
         ctrl.appendChild(hangBtn);
     }
 
-    const maxActions = (currentDoor.call_mode === 'sip' || currentDoor.call_mode === 'generic') ? 3 : 4;
+    const maxActions = (currentDoor.call_mode === 'sip' || currentDoor.call_mode === 'generic') ? 4 : 5;
     const actions = (currentDoor.actions || []).slice(0, maxActions);
     
     actions.forEach(action => {
@@ -688,8 +708,33 @@ async function initApp() {
     }
 
     renderDoor();
-    setupSIP();
+    if (configData.sip_status === 'enabled') setupSIP();
     initPushFlow();
+    initKeyboard();
+}
+
+function initKeyboard() {
+    document.addEventListener('keydown', e => {
+        // Ignore if user is typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        // Number keys 1-5 trigger action buttons
+        if (e.key >= '1' && e.key <= '5') {
+            const idx = parseInt(e.key) - 1;
+            const btns = $('controls').querySelectorAll('button.btn-action, button.btn-call, button.btn-hangup');
+            if (btns[idx]) btns[idx].click();
+        }
+
+        // Previous door
+        if (e.key === '-' || e.key === '_' || e.key === 'ArrowLeft') {
+            prevDoor();
+        }
+
+        // Next door
+        if (e.key === '+' || e.key === '=' || e.key === 'ArrowRight') {
+            nextDoor();
+        }
+    });
 }
 
 const PUSH_LATER_KEY = 'onedoor_push_later';
@@ -704,7 +749,7 @@ function urlBase64ToUint8Array(base64url) {
 }
 
 async function registerPush() {
-  if (!configData?.vapid_public_key) return;
+  if (!configData?.vapid_public_key || configData.push_status === 'disabled') return;
   try {
     const reg = await navigator.serviceWorker.getRegistration('/') || await navigator.serviceWorker.register('/service-worker.js');
     let sub = await reg.pushManager.getSubscription();
@@ -720,7 +765,7 @@ async function registerPush() {
 }
 
 function showPushModal(force = false) {
-  if (!configData?.vapid_public_key) return;
+  if (!configData?.vapid_public_key || configData.push_status === 'disabled') return;
   if (!force && Notification.permission !== 'default') return;
   if (!force && Date.now() - parseInt(localStorage.getItem(PUSH_LATER_KEY) || '0') < PUSH_WEEK_MS) return;
   if (!force && localStorage.getItem('push_opted') === 'denied') return;
@@ -758,7 +803,7 @@ function showPushModal(force = false) {
 }
 
 async function initPushFlow() {
-  if (!configData?.vapid_public_key) return;
+  if (!configData?.vapid_public_key || configData.push_status === 'disabled') return;
   if (!('Notification' in window)) return;
 
   const perm = Notification.permission;

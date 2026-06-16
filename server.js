@@ -340,6 +340,7 @@ const getClientConfig = (user, token) => {
             id: door.id,
             webrtc_name: door.webrtc_name,
             call_mode: door.call_mode,
+            video_fit: door.video_fit || 'dynamic',
             dial_extension: door.dial_extension,
             webrtc_extension: door.webrtc_extension,
             actions: (door.actions || []).map(action => {

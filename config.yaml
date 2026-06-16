@@ -1,8 +1,8 @@
 # ==============================================================================
 # MASTER CONFIGURATION
 # ==============================================================================
-domain:  # "door.yourdomain.com" 
-docker_host: # "192.168.1.26"  <-----local docker machine
+domain:  # "door.yourdomain.com"
+docker_host: # "192.168.1.26"
 
 # Global settings for the app and authentication
 onedoor:
@@ -20,6 +20,7 @@ onedoor:
 moredoors:
   - id: #"front"
     call_mode: #"sip" - sip, generic, or none. see docs.
+    video_fit: #"dynamic" - optional: dynamic (default), zoom, or full. controls video CSS object-fit.
     camera: #"rtsp://192.168.1.31:554/frontsubsmall#gop=1" string or list as per go2rtc  
     actions:
       - id: #"front_light" - generic id
@@ -36,10 +37,9 @@ moredoors:
   #   call_mode:
   #   camera: camera or list of streams as per go2rtc
   #   actions:
-  #     - id: "ha_light" <<---- home assistant bearer auth
+  #     - id: "ha_light"
   #       label: "HA Light"
   #       type: "hook"
-  #       method: "post"
   #       url: "http://192.168.1.100:8123/api/services/light/turn_on"
   #       icon: "💡"
   #       auth:
@@ -50,7 +50,6 @@ moredoors:
   #     - id: "dahua_light"
   #       label: "Dahua Light"
   #       type: "hook"
-  #       method: "get"  <<------- get is default/optional. can use "post" also
   #       url: "http://192.168.1.15/cgi-bin/configManager.cgi?action=setConfig&Lighting_V2[0][0][0].Mode=Manual"
   #       icon: "🔦"
   #       auth:
@@ -69,7 +68,6 @@ moredoors:
   #     - id: "garage_door"
   #       label: "Garage"
   #       type: "toggle"
-  #       method: "post"
   #       icon: "🚗"
   #       on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
   #       off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
@@ -93,7 +91,7 @@ moredoors:
   #       auth:
   #         type: "bearer"
   #         token: "YOUR_LONG_LIVED_TOKEN"
-  #       content_type: "application/json"   <<<<------ default when body is present no need to put here unless changing
+  #       content_type: "application/json"
   #       body:
   #         entity_id: "switch.plug"
   #     - id: "dahua_lighting"

@@ -2,7 +2,21 @@ OneDoor: Deployment, Hardware, Notifications, Security, and Roadmap
 
 OneDoor is a single‑container, ultra‑low‑latency door console that unifies SIP intercoms, RTSP cameras, notifications, and automation hooks into one clean interface. This guide covers recommended hardware, deployment, configuration, notifications, security model, and the project roadmap.
 
+**Table of Contents**
+
+- [1. Recommended Hardware](#1-recommended-hardware)
+- [2. Deployment](#2-deployment)
+- [3. Notifications](#3-notifications)
+- [4. Actions](#4-actions)
+- [5. Video Fit Configuration](#5-video-fit-configuration-v045)
+- [6. Keyboard Shortcuts](#6-keyboard-shortcuts-dashboard-mode)
+- [7. Security Model](#7-security-model)
+- [8. Administration](#8-administration)
+- [9. Roadmap](#9-roadmap)
+- [10. Contributions](#10-contributions)
+
 ----------------------------------------------------------------------
+<a id="1-recommended-hardware"></a>
 1. Recommended Hardware
 ----------------------------------------------------------------------
 
@@ -81,6 +95,7 @@ Notes:
 - Door numbering is positional; even if Door 1/2 are non‑SIP, Door 3 is still 107/704.
 
 ----------------------------------------------------------------------
+<a id="2-deployment"></a>
 2. Deployment
 ----------------------------------------------------------------------
 
@@ -125,6 +140,7 @@ Notes:
 - sip provides the best audio quality and multi‑user mic access.
 
 ----------------------------------------------------------------------
+<a id="3-notifications"></a>
 3. Notifications
 ----------------------------------------------------------------------
 
@@ -146,6 +162,7 @@ Behavior:
 - Mounted + empty: OneDoor generates VAPID keys on first start and persists them.
 - Mounted + populated: OneDoor reuses the existing keys.
 - Not mounted: Push stays disabled. `PUSH_ENABLED = false`. Frontend receives `push_status: 'disabled'` and `vapid_public_key: null`.
+
 3.2 How It Works
 - Intercom dials its assigned extension
 - OneDoor treats this as a doorbell event
@@ -191,6 +208,7 @@ Notes:
 - Setting either value to 0 disables that rate limit
 
 ----------------------------------------------------------------------
+<a id="4-actions"></a>
 4. Actions
 ----------------------------------------------------------------------
 
@@ -467,7 +485,77 @@ Sending Commands:
 - Commands are rejected when state is "unknown" to prevent unintended actions
 
 ----------------------------------------------------------------------
-5. Keyboard Shortcuts (Dashboard Mode)
+<a id="5-video-fit-configuration-v045"></a>
+5. Video Fit Configuration (v045+)
+----------------------------------------------------------------------
+
+Each door can specify a `video_fit` setting that controls how the video stream is displayed on the screen. This is set per-door in `config.yaml` and gives you direct control over the CSS `object-fit` behavior of the `<video>` element.
+
+### Options
+
+| Value | Behavior | CSS `object-fit` |
+|-------|----------|-------------------|
+| `dynamic` | **Default.** Automatically chooses `cover` or `contain` based on whether the video's aspect orientation matches the screen's orientation. If both are landscape or both are portrait → `cover`. If they differ → `contain`. | `cover` or `contain` (auto) |
+| `zoom` | Always fills the entire screen, cropping edges as needed. Video never has letterbox bars. | `cover` (always) |
+| `full` | Always shows the entire video frame, letterboxing as needed. No content is ever cropped. | `contain` (always) |
+
+### Configuration
+
+```yaml
+moredoors:
+  - id: "front"
+    video_fit: "zoom"      # dynamic | zoom | full
+    call_mode: "sip"
+    camera: "rtsp://..."
+```
+
+When omitted, defaults to `dynamic` (preserving original behavior).
+
+### When to Use Each Mode
+
+**`dynamic` (default)**
+Best general-purpose option. This gives most or all of the picture to the user as fast as possible and allows rotation to tweak the look.
+
+**`zoom`**
+Uses all available real estate but will heavily crop images when camera orientation does not match screen orientation.
+
+**`full`**
+Best when user always wants the full camera image displayed..
+
+### Performance Considerations
+
+On lower-end mobile devices (older phones, budget tablets), `dynamic` can cause brief visual jitter during stream startup or orientation changes. This is because the browser must:
+1. Load the video metadata to determine the video's native aspect ratio
+2. Compare it against the current screen dimensions
+3. Apply the appropriate `object-fit` value
+
+During this brief window, the video may flash between `cover` and `contain` before settling. If you notice this on your devices, switching to `zoom` or `full` eliminates the jitter because the `object-fit` value is decided upfront — no runtime comparison needed.
+
+**Tip:** If all your cameras and devices share the same orientation (e.g., all portrait), `dynamic` and `zoom` will produce identical results, but `zoom` is slightly faster to render because it skips the orientation check.
+
+### Per-Door Flexibility
+
+Since `video_fit` is set per-door, you can mix modes:
+
+```yaml
+moredoors:
+  - id: "front"
+    video_fit: "full"      # wide-angle, need to see everything
+    call_mode: "sip"
+    camera: "rtsp://..."
+  - id: "side"
+    video_fit: "zoom"      # narrow view, centered subject
+    call_mode: "none"
+    camera: "rtsp://..."
+  - id: "garage"
+    video_fit: "dynamic"   # mixed orientations, auto-detect
+    call_mode: "sip"
+    camera: "rtsp://..."
+```
+
+----------------------------------------------------------------------
+<a id="6-keyboard-shortcuts-dashboard-mode"></a>
+6. Keyboard Shortcuts (Dashboard Mode)
 ----------------------------------------------------------------------
 
 OneDoor supports keyboard control for dashboard / wall-mounted setups. Shortcuts are active when no input field is focused:
@@ -484,33 +572,35 @@ Notes:
 - Door navigation wraps around (last → first, first → last)
 
 ----------------------------------------------------------------------
-6. Security Model
+<a id="7-security-model"></a>
+7. Security Model
 ----------------------------------------------------------------------
 
 OneDoor treats the browser as untrusted and keeps sensitive data server‑side.
 
-6.1 Public → OneDoor
+7.1 Public → OneDoor
 - TLS required
 - All routes protected by JWT
 - No media or UI loads without valid token
 
-6.2 OneDoor → Internal Services
+7.2 OneDoor → Internal Services
 - WebSocket upgrades use a separate random token, never the JWT
 - Webhooks are hidden; clients only receive a webhook ID
 - Notification subsystem accepts local triggers only
 - go2rtc API restricted to exec ffmpeg only (no arbitrary commands)
 
 ----------------------------------------------------------------------
-7. Administration
+<a id="8-administration"></a>
+8. Administration
 ----------------------------------------------------------------------
 
-7.1 User Accounts
+8.1 User Accounts
 
 Usernames and password hashes are defined manually in `config.yaml`.  
 To revoke all user sessions at once, change the `JWT_SECRET` value in `docker-compose.yml`.  
 This invalidates every existing token and forces all users to log in again.
 
-7.2 Notification Registrations
+8.2 Notification Registrations
 
 All WebPush registrations and VAPID keys are stored in the `/vapid` directory.
 
@@ -520,7 +610,7 @@ To reset the entire notification system: delete the contents of `/vapid` and res
 
 To fully disable notifications: remove the `/vapid` volume binding from docker-compose.yml and restart. Push is cleanly disabled with no key generation.
 
-7.3 Generated Runtime Configuration
+8.3 Generated Runtime Configuration
 
 After OneDoor fully initializes, final runtime configuration files are written to:
 
@@ -533,10 +623,11 @@ These files reflect the merged and validated configuration used internally by th
 It is technically possible to bind custom versions of these files into the container, but this is **not recommended** and will almost certainly break at some point.
 
 ----------------------------------------------------------------------
-8. Roadmap
+<a id="9-roadmap"></a>
+9. Roadmap
 ----------------------------------------------------------------------
 
-8.1 Versions
+9.1 Versions
 - v031 — Baselines + documentation
 - v032 — Added link actions (hook, dtmf, link)
 - v034 — VAPID notifications; improved landscape layout
@@ -558,21 +649,29 @@ It is technically possible to bind custom versions of these files into the conta
   - Graceful shutdown: SIGTERM/SIGINT handlers close servers, flush subscriptions, clear timers
   - Entrypoint signal forwarding: Docker stop cascades to all child processes
   - Notification disable fix: `/vapid` mount strictly required; frontend respects `push_status: 'disabled'`
-- v045++++
+- v045 — Configurable Video Fit
+  - New `video_fit` per-door config option: `dynamic`, `zoom`, or `full`
+  - `dynamic` preserves original auto-detect behavior
+  - `zoom` always uses `cover` (fill screen, crop edges)
+  - `full` always uses `contain` (show entire frame, letterbox if needed)
+  - Eliminates orientation-check jitter on lower-end mobile devices when set to `zoom` or `full`
+  - Per-door flexibility allows mixing modes across cameras
+- v046+ (future releases)
   - Enable unlimited SIP endpoints by gracefully auto generating configs.
   - Explore multi-user audio mixing for generic endpoints (very difficult due to the lack of proper audio hardware on the devices).
 
-
-8.2 Multi‑Door Support
+9.2 Multi‑Door Support
 Each door has:
 - Independent audio mode (sip/generic/none)
 - Independent button routing
 - Independent notifications
 - Independent action sets
 - Faster swipe transitions
+- Configurable CSS.
 
 ----------------------------------------------------------------------
-9. Contributions
+<a id="10-contributions"></a>
+10. Contributions
 ----------------------------------------------------------------------
 
 PRs are welcome if they:
