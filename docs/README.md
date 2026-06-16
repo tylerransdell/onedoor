@@ -20,7 +20,12 @@ OneDoor is a single‑container, ultra‑low‑latency door console that unifies
 1. Recommended Hardware
 ----------------------------------------------------------------------
 
-1.1 Cameras (go2rtc)
+1.1 Server
+
+- **x64 required.** No other server hardware is supported.
+- The container includes basic libraries for Intel hardware acceleration if anyone may require it, but this harms latency and is generally not needed or recommended.
+
+1.2 Cameras (go2rtc)
 
 OneDoor uses a speed-optimized go2rtc build for media routing. Good cameras can produce sub‑second startup on their own but all cameras benefit from v040's preload + GOP cache.
 
@@ -49,7 +54,7 @@ Use backend UDP for closest-to-real-time video:
 camera: "rtsp://admin:password@192.168.1.10:554/cam/realmonitor?channel=1&subtype=1#rtsp_transport=udp#gop=1"
 ```
 
-1.2 SIP Intercoms
+1.3 SIP Intercoms
 
 Maximum compatibility:
 - Fanvil
@@ -520,7 +525,7 @@ Best general-purpose option. This gives most or all of the picture to the user a
 Uses all available real estate but will heavily crop images when camera orientation does not match screen orientation.
 
 **`full`**
-Best when user always wants the full camera image displayed..
+Best when the user always wants the full camera image displayed..
 
 ### Performance Considerations
 
@@ -657,7 +662,7 @@ It is technically possible to bind custom versions of these files into the conta
   - Eliminates orientation-check jitter on lower-end mobile devices when set to `zoom` or `full`
   - Per-door flexibility allows mixing modes across cameras
 - v046+ (future releases)
-  - Enable unlimited SIP endpoints by gracefully auto generating configs.
+  - Enable unlimited SIP endpoints by gracefully auto-generating configs.
   - Explore multi-user audio mixing for generic endpoints (very difficult due to the lack of proper audio hardware on the devices).
 
 9.2 Multi‑Door Support

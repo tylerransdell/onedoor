@@ -14,9 +14,26 @@ Tap a notification and you’re at your door in under a second. Swipe to another
 
 ---
 
+## 📖 Documentation
+
+Full deployment and configuration guide → **[docs/README.md](docs/README.md)**
+
+- [1. Recommended Hardware](docs/README.md#1-recommended-hardware) — Server requirements, cameras, SIP intercoms
+- [2. Deployment](docs/README.md#2-deployment) — Docker setup, network, call modes
+- [3. Notifications](docs/README.md#3-notifications) — WebPush, custom hooks, rate limiting
+- [4. Actions](docs/README.md#4-actions) — Hooks, toggles, DTMF, links, auth
+- [5. Video Fit Configuration](docs/README.md#5-video-fit-configuration-v045) — `dynamic`, `zoom`, `full`
+- [6. Keyboard Shortcuts](docs/README.md#6-keyboard-shortcuts-dashboard-mode) — Dashboard mode controls
+- [7. Security Model](docs/README.md#7-security-model) — Tokens, isolation, server-side secrets
+- [8. Administration](docs/README.md#8-administration) — Users, notifications, runtime config
+- [9. Roadmap](docs/README.md#9-roadmap) — Version history and future plans
+- [10. Contributions](docs/README.md#10-contributions) — How to contribute
+
+---
+
 ## 📸 Interface Preview
 
-OneDoor’s interface is intentionally minimal: a single, native‑resolution stream.  
+OneDoor’s interface is intentionally minimal: a single stream.  
 Only **one** stream is ever active at a time, keeping CPU/GPU usage extremely low.  
 Speed comes from **server‑side preload + GOP caching**, and rewriting timestamps, not from overworking the client.
 
