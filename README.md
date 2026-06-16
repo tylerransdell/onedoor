@@ -6,27 +6,27 @@ OneDoor is something completely different.
 
 OneDoor is built for the critical seconds where things actually happen: the moment a guest arrives, a delivery needs direction, or a situation needs de‑escalation. It delivers the fastest possible video, the fastest possible audio, and instant control of your entryway — all in a clean, real‑time interface.
 
-The v040+ series transformed OneDoor into a true multi‑door, multi‑device control surface. It’s up to **5× faster** than v037, supports **multiple audio modes**, and now includes **state‑aware actions** powerful enough to replace entire home‑automation dashboards. You may genuinely want to add an indoor camera or two just to play with it.
+The v040+ series transformed OneDoor into a true multi‑door, multi‑device control surface. It’s up to **5× faster** than v037, supports **multiple audio modes**, and now includes **state‑aware actions** powerful enough to replace entire home‑automation dashboards. You may genuinely want to add an indoor camera or two just to play with it, prank your spouse, whatever. 
 
 SIP remains the best experience — full‑duplex, instant, and rock‑solid — but OneDoor is no longer SIP‑only. Any door, any camera, any device can now be part of the system. Preloaded streams, GOP caching, and primed WebRTC eliminate the 3‑second refresh penalty that plagues most doorbell apps. Even non‑SIP devices become fast, responsive, and actually usable.
 
-Tap a notification and you’re at your door in under a second. Swipe to another door instantly. Trigger actions, automations, relays, lights, alarms, or NVR jumps with zero hesitation. OneDoor is now both a tactical‑speed intercom and a real‑time automation console.
+Tap a notification and you’re at your door in under a second. Swipe to another door instantly. Trigger actions, automations, relays, lights, alarms, or NVR jumps with zero hesitation. OneDoor is now both a tactical‑speed intercom and a real‑time automation console that you can actually see. 
 
 ---
 
 ## 📸 Interface Preview
 
-## 📸 Interface Preview
-
 OneDoor’s interface is intentionally minimal: a single, native‑resolution stream.  
 Only **one** stream is ever active at a time, keeping CPU/GPU usage extremely low.  
-Speed comes from **server‑side preload + GOP caching**, not from overworking the client.
+Speed comes from **server‑side preload + GOP caching**, and rewriting timestamps, not from overworking the client.
 
 ### Mobile App
 <img src="screenshots/mobile_view.png" height="380">
 
 ### Desktop Widget (Video Preview)
-https://raw.githubusercontent.com/tylerransdell/onedoor/dev/screenshots/widget.mp4
+
+
+https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 
 
 ---
