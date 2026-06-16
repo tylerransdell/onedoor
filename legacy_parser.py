@@ -49,8 +49,9 @@ def run_legacy():
 
     try: public_ip = socket.gethostbyname(domain)
     except Exception: public_ip = domain
-    legacy_doors = [{'id': 'legacy_door', 'dial_extension': 700}]
-    generate_pjsip(users, domain, docker_host, public_ip, legacy_doors)
+    legacy_doors = [{'id': 'legacy_door', 'dial_extension': 700, 'call_mode': 'sip'}]
+    sip_doors = legacy_doors  # legacy always has SIP
+    generate_pjsip(users, domain, docker_host, public_ip, legacy_doors, sip_doors)
     print("✅ Legacy configuration complete (Direct Config).", flush=True)
 
 if __name__ == "__main__":

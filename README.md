@@ -6,7 +6,7 @@ OneDoor is something completely different.
 
 OneDoor is built for the critical seconds where things actually happen: the moment a guest arrives, a delivery needs direction, or a situation needs de‑escalation. It delivers the fastest possible video, the fastest possible audio, and instant control of your entryway — all in a clean, real‑time interface.
 
-The v040+ series transformed OneDoor into a true multi‑door, multi‑device control surface. It’s up to **5× faster** than v037, supports **multiple audio modes**, and now includes **state‑aware actions** powerful enough to replace entire home‑automation dashboards. You may genuinely want to add an indoor camera or two just to play with it, prank your spouse, whatever. 
+The v040+ series transformed OneDoor into a true multi‑door, multi‑device control surface. It’s up to **5× faster** than v037, supports **multiple audio modes**, and now includes **state‑aware actions** powerful enough to replace entire home‑automation dashboards. You may genuinely want to add an indoor camera or two just to play with it. 
 
 SIP remains the best experience — full‑duplex, instant, and rock‑solid — but OneDoor is no longer SIP‑only. Any door, any camera, any device can now be part of the system. Preloaded streams, GOP caching, and primed WebRTC eliminate the 3‑second refresh penalty that plagues most doorbell apps. Even non‑SIP devices become fast, responsive, and actually usable.
 
@@ -47,7 +47,7 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 - **Secure by design** — Split‑token signaling, isolated webhooks, no secrets in the browser, no cloud, no telemetry.
 - **Zero‑knowledge setup** — No PBX, SIP, RTP, SRTP, or dialplan expertise required.
 - **Automatic key + credential generation** — Strong defaults.
-- **PWA + desktop widget** — Fast, minimal UI optimized for door response.
+- **PWA + desktop widget** — Fast, minimal UI optimized for door response. Also keyboard support.
 - **Ecosystem‑friendly** — Works cleanly alongside Home Assistant, Frigate NVR, and existing SIP hardware.
 - **Appliance‑grade reliability** — Designed to run unattended, behind NAT, VPNs, and complex networks.
 - **Fast Notifications** — Pure WebPush straight to Apple/Google. No Firebase. No app. Custom hooks accepted.

@@ -240,14 +240,30 @@ try {
     process.exit(1);
 }
 
+// --- SIP DETECTION ---
+const SIP_ENABLED = (config.doors || []).some(d => d.call_mode === 'sip');
+try { fs.writeFileSync('/tmp/sip-enabled', SIP_ENABLED ? '1' : '0'); } catch {}
+console.log(`📞 SIP: ${SIP_ENABLED ? 'Enabled' : 'Disabled'} (${(config.doors || []).filter(d => d.call_mode === 'sip').length} SIP door(s))`);
+
 // --- PUSH INIT ---
+const VAPID_DIR = '/vapid';
 if (config.global?.domain) {
     try {
-        vapidKeys = ensureVapidKeys(config.global.domain);
-        webPush.setVapidDetails(vapidKeys.subject, vapidKeys.publicKey, vapidKeys.privateKey);
-        PUSH_ENABLED = !!(vapidKeys.publicKey && vapidKeys.privateKey);
-        if (PUSH_ENABLED) console.log(`🔔 Push: Enabled (subject: ${vapidKeys.subject})`);
+        if (!fs.existsSync(VAPID_DIR)) {
+            console.log('🔕 Push: Disabled (/vapid not mounted)');
+        } else {
+            if (!fs.statSync(VAPID_DIR).isDirectory()) {
+                console.warn('⚠️ Push: /vapid exists but is not a directory');
+            } else {
+                vapidKeys = ensureVapidKeys(config.global.domain);
+                webPush.setVapidDetails(vapidKeys.subject, vapidKeys.publicKey, vapidKeys.privateKey);
+                PUSH_ENABLED = !!(vapidKeys.publicKey && vapidKeys.privateKey);
+                if (PUSH_ENABLED) console.log(`🔔 Push: Enabled (subject: ${vapidKeys.subject})`);
+            }
+        }
     } catch(e) { console.warn('⚠️ Push: Failed to initialize VAPID:', e.message); }
+} else {
+    console.log('🔕 Push: Disabled (no domain configured)');
 }
 
 // Load subscriptions cache
@@ -312,6 +328,7 @@ const getClientConfig = (user, token) => {
         ws_token: WS_TOKEN,
         vapid_public_key: PUSH_ENABLED ? vapidKeys.publicKey : null,
         push_status: PUSH_ENABLED ? (hasActiveSub ? 'active' : 'missing') : 'disabled',
+        sip_status: SIP_ENABLED ? 'enabled' : 'disabled',
 
         pbx: {
             user_agent: config.global.pbx?.user_agent || 'OneDoor',
@@ -635,7 +652,7 @@ notifier.on('send-push', async ({ target, message }) => {
 
 // --- SNOOZE STATE ---
 const snooze = { allUntil: 0, sameLast: new Map() };
-setInterval(() => {
+const snoozeInterval = setInterval(() => {
     const threshold = Date.now()/1000 - ((config.global.notifications?.snooze_same || 60) * 2);
     for (const [key, ts] of snooze.sameLast) { if (ts < threshold) snooze.sameLast.delete(key); }
 }, 5 * 60 * 1000);
@@ -751,7 +768,7 @@ hookApp.post('/webhook', (req, res) => {
     res.sendStatus(202);
 });
 
-hookApp.listen(8199, '0.0.0.0', () => console.log('🎣 Webhook: 0.0.0.0:8199'));
+const hookServer = hookApp.listen(8199, '0.0.0.0', () => console.log('🎣 Webhook: 0.0.0.0:8199'));
 
 // --- START MAIN SERVER ---
 const PORT = config.global.server?.listen_port || 8099;
@@ -760,5 +777,38 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Port: ${PORT}`);
     console.log(`🛡️ JWT: active`);
     console.log(`🎥 go2rtc: /go2rtc → 127.0.0.1:1984`);
-    console.log(`📞 Asterisk WS: /ws → 127.0.0.1:8088`);
+    console.log(`📞 Asterisk WS: /ws → 127.0.0.1:8088 (${SIP_ENABLED ? 'SIP active' : 'no SIP doors'})`);
+    console.log(`🔔 Push: ${PUSH_ENABLED ? 'Enabled' : 'Disabled'}`);
 });
+
+// --- SHUTDOWN HANDLING ---
+let shuttingDown = false;
+function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`
+🛑 Received ${signal}, shutting down gracefully...`);
+
+    // Stop the snooze cleanup interval
+    clearInterval(snoozeInterval);
+
+    // Flush pending subscription save
+    clearTimeout(saveTimeout);
+    try { fs.writeFileSync(SUBS_PATH, JSON.stringify(subscriptions)); } catch{}
+
+    // Close both HTTP servers
+    let pending = 0;
+    const done = () => { if (--pending === 0) { console.log('✅ Shutdown complete'); process.exit(0); } };
+
+    pending++;
+    server.close(() => { console.log('🔒 Main server closed'); done(); });
+
+    pending++;
+    hookServer.close(() => { console.log('🔒 Webhook server closed'); done(); });
+
+    // Force exit after 5 seconds if something hangs
+    setTimeout(() => { console.warn('⚠️ Forced exit after timeout'); process.exit(1); }, 5000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

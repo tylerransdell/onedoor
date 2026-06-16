@@ -2,21 +2,29 @@ import os
 
 ASTERISK_DIR = '/etc/asterisk'
 
-def generate_pjsip(users, domain, docker_host, public_ip, doors=None):
+def generate_pjsip(users, domain, docker_host, public_ip, doors=None, sip_doors=None):
     if doors is None:
         doors = []
+    if sip_doors is None:
+        sip_doors = []
+    has_sip = len(sip_doors) > 0
+    udp_bind = '0.0.0.0:5060' if has_sip else '127.0.0.1:5060'
     pjsip = f"""; --- AUTO-GENERATED ---
-[transport-udp]
+; SIP doors: {len(sip_doors)} | Non-SIP doors: {len(doors) - len(sip_doors)}
+"""
+    if has_sip:
+        pjsip += f"""[transport-udp]
 type=transport
 protocol=udp
-bind=0.0.0.0:5060
+bind={udp_bind}
 external_media_address={domain}
 external_signaling_address={domain}
 local_net=192.168.0.0/16
 local_net=10.0.0.0/8
 domain={domain}
 
-[transport-ws]
+"""
+    pjsip += f"""[transport-ws]
 type=transport
 protocol=ws
 bind=0.0.0.0:8088
@@ -27,6 +35,8 @@ local_net=10.0.0.0/8
 domain={domain}
 """
     for i, door in enumerate(doors):
+        if door.get('call_mode', 'sip') != 'sip':
+            continue
         ext = 105 + i
         dial_ext = door.get('dial_extension', 700 + (i * 2))
         ctx = 'intercom-logic' if i == 0 else f'intercom-logic{i+1}'

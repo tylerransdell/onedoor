@@ -130,12 +130,22 @@ Notes:
 
 OneDoor supports instant WebPush notifications for doorbell presses and custom events. No apps. No Firebase. Direct APNs + Google WebPush.
 
-3.1 Enabling Notifications
-Bind /vapid in docker-compose.yml:
+3.1 Enabling / Disabling Notifications
+Notifications require the `/vapid` directory to be mounted. If omitted, push is cleanly disabled — the server generates no ephemeral keys and the frontend never prompts for registration.
+
+To enable:
 ```
 volumes:
   - ./vapid:/vapid
 ```
+
+To disable:
+Remove or comment out the `/vapid` volume binding. The server logs `Push: Disabled (/vapid not mounted)` on startup.
+
+Behavior:
+- Mounted + empty: OneDoor generates VAPID keys on first start and persists them.
+- Mounted + populated: OneDoor reuses the existing keys.
+- Not mounted: Push stays disabled. `PUSH_ENABLED = false`. Frontend receives `push_status: 'disabled'` and `vapid_public_key: null`.
 3.2 How It Works
 - Intercom dials its assigned extension
 - OneDoor treats this as a doorbell event
@@ -150,9 +160,12 @@ POST custom events to notify all users or a specific user.
 3.4 User Registration
 Users are prompted only when:
 - Logged in
+- `/vapid` is mounted (notifications enabled)
 - Not already registered on that device
 - Keys are invalid or expired
 - User has not previously dismissed or snoozed registration
+
+If `/vapid` is not mounted, the frontend never prompts — `push_status: 'disabled'` short-circuits the entire registration flow.
 
 iOS users must install OneDoor as a Home Screen app.
 
@@ -454,39 +467,60 @@ Sending Commands:
 - Commands are rejected when state is "unknown" to prevent unintended actions
 
 ----------------------------------------------------------------------
-5. Security Model
+5. Keyboard Shortcuts (Dashboard Mode)
+----------------------------------------------------------------------
+
+OneDoor supports keyboard control for dashboard / wall-mounted setups. Shortcuts are active when no input field is focused:
+
+| Key | Action |
+|-----|--------|
+| `1` – `5` | Trigger action button 1–5 (buttons in left-to-right or top-to-bottom order) |
+| `-` or `ArrowLeft` | Previous door |
+| `+` or `ArrowRight` | Next door |
+
+Notes:
+- Shortcuts work with both physical keyboards and on-screen/keypad devices
+- Keys are ignored while typing in login fields (standard input focus check)
+- Door navigation wraps around (last → first, first → last)
+
+----------------------------------------------------------------------
+6. Security Model
 ----------------------------------------------------------------------
 
 OneDoor treats the browser as untrusted and keeps sensitive data server‑side.
 
-5.1 Public → OneDoor
+6.1 Public → OneDoor
 - TLS required
 - All routes protected by JWT
 - No media or UI loads without valid token
 
-5.2 OneDoor → Internal Services
+6.2 OneDoor → Internal Services
 - WebSocket upgrades use a separate random token, never the JWT
 - Webhooks are hidden; clients only receive a webhook ID
 - Notification subsystem accepts local triggers only
 - go2rtc API restricted to exec ffmpeg only (no arbitrary commands)
 
 ----------------------------------------------------------------------
-6. Administration
+7. Administration
 ----------------------------------------------------------------------
 
-6.1 User Accounts
+7.1 User Accounts
 
 Usernames and password hashes are defined manually in `config.yaml`.  
 To revoke all user sessions at once, change the `JWT_SECRET` value in `docker-compose.yml`.  
 This invalidates every existing token and forces all users to log in again.
 
-6.2 Notification Registrations
+7.2 Notification Registrations
 
-All WebPush registrations are stored in the `/vapid` directory.  
-To clear every registered device (or reset the notification system entirely), delete the contents of `/vapid` and restart the container.  
-New keys will be generated automatically.
+All WebPush registrations and VAPID keys are stored in the `/vapid` directory.
 
-6.3 Generated Runtime Configuration
+To clear registrations only: delete `/vapid/push-subs.json` and restart. Keys are preserved.
+
+To reset the entire notification system: delete the contents of `/vapid` and restart. New VAPID keys and subscriptions will be generated on next use.
+
+To fully disable notifications: remove the `/vapid` volume binding from docker-compose.yml and restart. Push is cleanly disabled with no key generation.
+
+7.3 Generated Runtime Configuration
 
 After OneDoor fully initializes, final runtime configuration files are written to:
 
@@ -499,10 +533,10 @@ These files reflect the merged and validated configuration used internally by th
 It is technically possible to bind custom versions of these files into the container, but this is **not recommended** and will almost certainly break at some point.
 
 ----------------------------------------------------------------------
-7. Roadmap
+8. Roadmap
 ----------------------------------------------------------------------
 
-7.1 Versions
+8.1 Versions
 - v031 — Baselines + documentation
 - v032 — Added link actions (hook, dtmf, link)
 - v034 — VAPID notifications; improved landscape layout
@@ -515,11 +549,21 @@ It is technically possible to bind custom versions of these files into the conta
   - Toggle actions with state polling
   - UI refinements for portrait/landscape
   - manager.py for SIP call cleanup
-- v042+ — Upcoming
-  - Additional UI improvements
-  - Enhanced automation hooks
+- v042-v044 — Dashboard Controls + Reliability
+  - Fix multi-door dialplans
+  - Expand action webhook and toggle capabilities
+  - Keyboard shortcuts: `1-5` triggers action buttons, `-` previous door, `+` next door
+  - Arrow keys also navigate doors (Left=previous, Right=next)
+  - Dynamic video fit: `object-fit: cover` when video/screen orientations match, `contain` when they differ (no content cropped)
+  - Graceful shutdown: SIGTERM/SIGINT handlers close servers, flush subscriptions, clear timers
+  - Entrypoint signal forwarding: Docker stop cascades to all child processes
+  - Notification disable fix: `/vapid` mount strictly required; frontend respects `push_status: 'disabled'`
+- v045++++
+  - Enable unlimited SIP endpoints by gracefully auto generating configs.
+  - Explore multi-user audio mixing for generic endpoints (very difficult due to the lack of proper audio hardware on the devices).
 
-7.2 Multi‑Door Support
+
+8.2 Multi‑Door Support
 Each door has:
 - Independent audio mode (sip/generic/none)
 - Independent button routing
@@ -528,7 +572,7 @@ Each door has:
 - Faster swipe transitions
 
 ----------------------------------------------------------------------
-8. Contributions
+9. Contributions
 ----------------------------------------------------------------------
 
 PRs are welcome if they:

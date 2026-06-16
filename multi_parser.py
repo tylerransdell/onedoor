@@ -65,5 +65,6 @@ def provision_multi(master):
         'id': d['id'],
         'dial_extension': 700 + (i*2),
     } for i, d in enumerate(master['moredoors'])]
-    generate_pjsip(users, master['domain'], master.get('docker_host'), public_ip, doors)
+    sip_doors = [d for d in master['moredoors'] if d.get('call_mode', 'sip') == 'sip']
+    generate_pjsip(users, master['domain'], master.get('docker_host'), public_ip, doors, sip_doors)
     print("🚀 Multi-door provisioning complete (Direct Config).", flush=True)
