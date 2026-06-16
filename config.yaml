@@ -42,6 +42,7 @@ moredoors:
   #       type: "hook"
   #       url: "http://192.168.1.100:8123/api/services/light/turn_on"
   #       icon: "💡"
+  #       method: "POST"
   #       auth:
   #         type: "bearer"
   #         token: "YOUR_LONG_LIVED_TOKEN"
@@ -69,6 +70,7 @@ moredoors:
   #       label: "Garage"
   #       type: "toggle"
   #       icon: "🚗"
+  #       method: "POST"
   #       on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
   #       off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
   #       status_url: "http://192.168.1.100:8123/api/states/cover.garage"
@@ -83,6 +85,7 @@ moredoors:
   #       label: "Switch"
   #       type: "toggle"
   #       icon: "🔌"
+  #       method: "POST"
   #       on_url: "http://192.168.1.100:8123/api/services/switch/turn_on"
   #       off_url: "http://192.168.1.100:8123/api/services/switch/turn_off"
   #       status_url: "http://192.168.1.100:8123/api/states/switch.plug"

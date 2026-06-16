@@ -234,7 +234,9 @@ If no `auth` field is specified, requests are sent with no authentication (same 
 
 The `content_type` field controls the request body format. Default is `application/json`. Use `application/x-www-form-urlencoded` for form-based endpoints. Headers are auto-set based on content_type + auth, but you can still add custom `headers:` alongside `auth:`.
 
-The `method` field controls the HTTP method (case-insensitive). Default is `"GET"`. Set to `"POST"` for endpoints that require POST requests (Home Assistant, etc.). For Dahua cameras, use `"GET"` since all parameters go in the URL.
+The `method` field controls the HTTP method (case-insensitive). Default is `"GET"`. Set to `"POST"` for endpoints that require POST requests (Home Assistant service calls, etc.). For Dahua cameras, use `"GET"` since all parameters go in the URL.
+
+**Status polls are always GET** — the `method` field only applies to hook and toggle on/off commands. Status endpoints (`status_url`) are always queried with GET regardless of the `method` setting.
 
 Legacy `headers: { Authorization: "Bearer ..." }` still works for backward compatibility.
 
@@ -278,7 +280,7 @@ Works for toggles too — when `auth` is omitted, all three URLs (on, off, statu
 
 ### Home Assistant (bearer token)
 
-Home Assistant uses long-lived bearer tokens. Put the token in `auth:` and HA gets it automatically on every call — hook commands, toggle on/off, and status polls all authenticated:
+Home Assistant uses long-lived bearer tokens. Put the token in `auth:` and HA gets it automatically on every call — hook commands, toggle on/off, and status polls all authenticated. **Note:** HA service endpoints (`/api/services/...`) require `method: "POST"`. Status endpoints (`/api/states/...`) use GET automatically.
 
 ```yaml
 - id: "ha_light"
@@ -286,6 +288,7 @@ Home Assistant uses long-lived bearer tokens. Put the token in `auth:` and HA ge
   type: "hook"
   url: "http://192.168.1.100:8123/api/services/light/turn_on"
   icon: "💡"
+  method: "POST"
   auth:
     type: "bearer"
     token: "YOUR_LONG_LIVED_TOKEN"
@@ -293,13 +296,14 @@ Home Assistant uses long-lived bearer tokens. Put the token in `auth:` and HA ge
     entity_id: "light.porch"
 ```
 
-Toggle with HA bearer — same auth block applies to on_url, off_url, and status_url:
+Toggle with HA bearer — same auth block applies to on_url, off_url, and status_url. Use `method: "POST"` for HA service calls (on_url/off_url). Status polls (status_url) are always GET:
 
 ```yaml
 - id: "garage_door"
   label: "Garage"
   type: "toggle"
   icon: "🚗"
+  method: "POST"
   on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
   off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
   status_url: "http://192.168.1.100:8123/api/states/cover.garage"
@@ -459,6 +463,7 @@ Example (Home Assistant cover):
   label: "Garage"
   type: "toggle"
   icon: "🚗"
+  method: "POST"
   on_url: "http://192.168.1.100:8123/api/services/cover/open_cover"
   off_url: "http://192.168.1.100:8123/api/services/cover/close_cover"
   status_url: "http://192.168.1.100:8123/api/states/cover.garage"
