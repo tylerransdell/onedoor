@@ -637,7 +637,7 @@ It is technically possible to bind custom versions of these files into the conta
 9. Roadmap
 ----------------------------------------------------------------------
 
-9.1 Versions
+Versions
 - v031 — Baselines + documentation
 - v032 — Added link actions (hook, dtmf, link)
 - v034 — VAPID notifications; improved landscape layout
@@ -654,7 +654,6 @@ It is technically possible to bind custom versions of these files into the conta
   - Fix multi-door dialplans
   - Expand action webhook and toggle capabilities
   - Keyboard shortcuts: `1-5` triggers action buttons, `-` previous door, `+` next door
-  - Arrow keys also navigate doors (Left=previous, Right=next)
   - Dynamic video fit: `object-fit: cover` when video/screen orientations match, `contain` when they differ (no content cropped)
   - Graceful shutdown: SIGTERM/SIGINT handlers close servers, flush subscriptions, clear timers
   - Entrypoint signal forwarding: Docker stop cascades to all child processes
@@ -664,28 +663,19 @@ It is technically possible to bind custom versions of these files into the conta
   - `dynamic` preserves original auto-detect behavior
   - `zoom` always uses `cover` (fill screen, crop edges)
   - `full` always uses `contain` (show entire frame, letterbox if needed)
-  - Eliminates orientation-check jitter on lower-end mobile devices when set to `zoom` or `full`
-  - Per-door flexibility allows mixing modes across cameras
 - v046+ (future releases)
-  - Enable unlimited SIP endpoints by gracefully auto-generating configs.
-  - Explore multi-user audio mixing for generic endpoints (very difficult due to the lack of proper audio hardware on the devices).
-
-9.2 Multi‑Door Support
-Each door has:
-- Independent audio mode (sip/generic/none)
-- Independent button routing
-- Independent notifications
-- Independent action sets
-- Faster swipe transitions
-- Configurable CSS.
+  - IPv6 support (At least UDP through NPTv6 networks).
+  - Enable unlimited SIP endpoints by gracefully auto-generating dialplans and modifying parsers.
+  - Explore multi-user audio mixing for generic endpoints (very difficult due to the lack of proper audio hardware on these devices).
 
 ----------------------------------------------------------------------
 <a id="10-contributions"></a>
 10. Contributions
 ----------------------------------------------------------------------
 
-PRs are welcome if they:
+PRs are encouraged if they:
 - Improve functionality
 - Maintain OneDoor's clean, low‑latency design
 - Fit the project's philosophy
 - Remain under MIT
+- Bonus points for roadmap items

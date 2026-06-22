@@ -1,16 +1,32 @@
-# OneDoor 🚪 — Built for the Seconds That Matter
+# OneDoor 🚪
 
-NVRs are great at recording, tracking, and reviewing events — even several at once.
+**Real-time communication and control over your property.**
 
-OneDoor is something completely different.
+OneDoor captures the critical seconds that matter, giving you the instant ability to communicate and act—never just be a bystander.
 
-OneDoor is built for the critical seconds where things actually happen: the moment a guest arrives, a delivery needs direction, or a situation needs de‑escalation. It delivers the fastest possible video, the fastest possible audio, and instant control of your entryway — all in a clean, real‑time interface.
+## What is OneDoor?
 
-The v040+ series transformed OneDoor into a true multi‑door, multi‑device control surface. It’s up to **5× faster** than v037, supports **multiple audio modes**, and now includes **state‑aware actions** powerful enough to replace entire home‑automation dashboards. You may genuinely want to add an indoor camera or two just to play with it. 
+Originally a hyper-focused, SIP-first PWA for a single door, OneDoor has evolved into a multi-door communication and control surface, benefiting even non-SIP devices.
 
-SIP remains the best experience — full‑duplex, instant, and rock‑solid — but OneDoor is no longer SIP‑only. Any door, any camera, any device can now be part of the system. Preloaded streams, GOP caching, and primed WebRTC eliminate the 3‑second refresh penalty that plagues most doorbell apps. Even non‑SIP devices become fast, responsive, and actually usable.
+OneDoor is primarily a Node server built around a speed-optimized go2rtc build and a lightweight Alpine Asterisk build. 
 
-Tap a notification and you’re at your door in under a second. Swipe to another door instantly. Trigger actions, automations, relays, lights, alarms, or NVR jumps with zero hesitation. OneDoor is now both a tactical‑speed intercom and a real‑time automation console that you can actually see. 
+It combines:
+- Optimizations for:
+  - Unprivileged container deployement
+  - Secure bridge networking
+  - Complex NAT traversal
+  - Low latency and load times
+- Authentication
+- Secure media routing
+- Key and secret generation
+- Notifications (built-in and custom)
+- Actions (DTMF, state-aware toggles, webhooks, and links)
+- Configurable CSS
+- Server-side SIP configuration
+
+While designed primarily as a **mobile notification target**, it also functions well as:
+- **A desktop widget** for quick visual confirmation and controlled access.
+- **An automation dashboard** with real-time visual confirmation and human reaction.
 
 ---
 
@@ -33,18 +49,16 @@ Full deployment and configuration guide → **[docs/README.md](docs/README.md)**
 
 ## 📸 Interface Preview
 
-OneDoor’s interface is intentionally minimal: a single stream.  
-Only **one** stream is ever active at a time, keeping CPU/GPU usage extremely low.  
-Speed comes from **server‑side preload + GOP caching**, and rewriting timestamps, not from overworking the client.
+OneDoor's interface is intentionally minimal: a single stream.
+Only **one** client stream is ever active at a time, keeping CPU/GPU usage extremely low.
+Speed comes from **server‑side preload + GOP caching** and rewriting timestamps.
 
 ### Mobile App
 <img src="screenshots/mobile_view.png" height="380">
 
 ### Desktop Widget (Video Preview)
 
-
 https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
-
 
 ---
 
@@ -66,13 +80,43 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 - **Automatic key + credential generation** — Strong defaults.
 - **PWA + desktop widget** — Fast, minimal UI optimized for door response. Also keyboard support.
 - **Ecosystem‑friendly** — Works cleanly alongside Home Assistant, Frigate NVR, and existing SIP hardware.
-- **Appliance‑grade reliability** — Designed to run unattended, behind NAT, VPNs, and complex networks.
+- **Appliance-like design** — Designed to run unattended, accessible to clients behind CGNAT, VPNs, and complex networks.
 - **Fast Notifications** — Pure WebPush straight to Apple/Google. No Firebase. No app. Custom hooks accepted.
 
 ---
 
+## ⚡ Quick Start
+
+OneDoor docs are optimized with examples for quick deployment using even free tier AI agents. 
+
+Manually:
+1. Copy `docker-compose.yml` and `config.yaml`. Use `makepass.example` to generate your password hash.
+2. Modify the files as per the [documentation](docs/README.md).
+3. Add OneDoor port `8099` to your reverse proxy with **WebSocket support** and **TLS** enabled.
+4. Start the service: `docker compose up -d`
+
+### Minimum Configuration
+
+```yaml
+domain:  # "door.yourdomain.com"
+docker_host: # "192.168.1.26"
+
+onedoor:
+  users:
+    - username: #"first_user"
+      password_hash: #use makepass.example
+
+moredoors:
+  - id: #"front"
+    call_mode: #"sip" - sip, generic (via video channel), or none.
+    camera: #"rtsp://admin:password@192.168.1.10:554/cam/realmonitor?channel=1&subtype=1#rtsp_transport=udp#gop=1" string or list
+```
+
+---
+
 ## ❤️ Why OneDoor Exists
+OneDoor started with one goal: take back the seconds that matter by building around the hardware best suited for the task. Everything else is an evolution.
 
-OneDoor started with one goal: take back the seconds that matter. But solving that problem pushed the project forward — unified Docker became a universal build, limited compatibility became support for any camera, simple actions became powerful automations, slow swiping led to preload + GOP caching, complexity demanded better docs, and growing needs created state‑aware toggles. The mission stayed the same, the feature set grew around it.
+OneDoor exists to put you directly inside the critical seconds where hospitality, communication, and safety actually happen.
 
-OneDoor exists to put you directly inside the critical seconds where hospitality, communication, safety, and maybe a little fun actually happen.
+Nobody else is doing this: OneDoor can sacrifice almost anything but security to bring users closer to real-time harmony. Others can't.
