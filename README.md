@@ -8,11 +8,11 @@ OneDoor captures the critical seconds that matter, giving you the instant abilit
 
 Originally a hyper-focused, SIP-first PWA for a single door, OneDoor has evolved into a multi-door communication and control surface, benefiting even non-SIP devices.
 
-OneDoor is primarily a Node server built around a speed-optimized go2rtc build and a lightweight Alpine Asterisk build. 
+OneDoor is primarily a Node server built around a modified go2rtc build and a lightweight Alpine Asterisk build. 
 
 It combines:
 - Optimizations for:
-  - Unprivileged container deployement
+  - Unprivileged container deployment
   - Secure bridge networking
   - Complex NAT traversal
   - Low latency and load times
@@ -27,6 +27,20 @@ It combines:
 While designed primarily as a **mobile notification target**, it also functions well as:
 - **A desktop widget** for quick visual confirmation and controlled access.
 - **An automation dashboard** with real-time visual confirmation and human reaction.
+
+## Why use OneDoor
+Everyone
+- OneDoor is the fastest way to get to your door.
+- Get your important, real-time actions right at your fingertips.
+
+SIP and pro camera users:
+- No need to set up PBX, just configure your devices.
+- Integrate to actions and non-SIP devices on one surface.
+
+Retail camera users:
+- Preload and GOP cache significantly reduce load times.
+- Access to your doorbell is faster than any other app.
+- Give doorbells and 2-way cameras features like multi-user conferencing that don't exist elsewhere.
 
 ---
 
@@ -66,8 +80,8 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 
 - **Multi‑door support** — Add as many doors/cameras as you want and swipe between them instantly.
 - **Multiple audio modes** —
-  - `sip` for full SIP signaling and the best experience
-  - `generic` for video‑channel audio + mic toggle
+  - `sip` for the best pure UDP experience
+  - `generic` for most doorbells and cameras that can integrate to go2rtc
   - `none` for video‑channel audio without 2‑way talk
 - **Per‑door action sets** — Configurable DTMF payloads, private backend webhooks, frontend links, and state‑aware toggle actions for locks, lights, and automations.
 - **Deep‑linked notifications** — Alerts take you directly to the door that was pressed.
@@ -87,7 +101,7 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 
 ## ⚡ Quick Start
 
-OneDoor docs are optimized with examples for quick deployment using even free tier AI agents. 
+OneDoor docs are optimized with examples for quick deployment using free tier AI agents. 
 
 Manually:
 1. Copy `docker-compose.yml` and `config.yaml`. Use `makepass.example` to generate your password hash.
@@ -118,5 +132,3 @@ moredoors:
 OneDoor started with one goal: take back the seconds that matter by building around the hardware best suited for the task. Everything else is an evolution.
 
 OneDoor exists to put you directly inside the critical seconds where hospitality, communication, and safety actually happen.
-
-Nobody else is doing this: OneDoor can sacrifice almost anything but security to bring users closer to real-time harmony. Others can't.

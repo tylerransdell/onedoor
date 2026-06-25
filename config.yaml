@@ -16,11 +16,10 @@ onedoor:
     snooze_all: 120 #snooze seconds after any notification sent
     snooze_same: 120 #cooldown for identical notifications
 
-# Door definitions - List order determines extension: 700, 702, 704...
 moredoors:
   - id: #"front"
     call_mode: #"sip" - sip, generic, or none. see docs.
-    video_fit: #"dynamic" - optional: dynamic (default), zoom, or full. controls video CSS object-fit.
+    video_fit: #"dynamic" - optional: dynamic (default), zoom, or full.
     camera: #"rtsp://192.168.1.31:554/frontsubsmall#gop=1" string or list as per go2rtc  
     actions:
       - id: #"front_light" - generic id

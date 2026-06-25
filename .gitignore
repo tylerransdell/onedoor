@@ -1,0 +1,5 @@
+/keys
+/vapid
+docker-compose.yml
+config.yaml
+*.test

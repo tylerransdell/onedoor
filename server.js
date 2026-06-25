@@ -241,9 +241,11 @@ try {
 }
 
 // --- SIP DETECTION ---
-const SIP_ENABLED = (config.doors || []).some(d => d.call_mode === 'sip');
-try { fs.writeFileSync('/tmp/sip-enabled', SIP_ENABLED ? '1' : '0'); } catch {}
-console.log(`📞 SIP: ${SIP_ENABLED ? 'Enabled' : 'Disabled'} (${(config.doors || []).filter(d => d.call_mode === 'sip').length} SIP door(s))`);
+// v050: SIP is used for both SIP doors (intercoms) and generic doors (go2rtc SIP consumer)
+const SIP_ENABLED = (config.doors || []).some(d => d.call_mode === 'sip' || d.call_mode === 'generic');
+const sipDoorCount = (config.doors || []).filter(d => d.call_mode === 'sip').length;
+const genericDoorCount = (config.doors || []).filter(d => d.call_mode === 'generic').length;
+console.log(`📞 SIP: ${SIP_ENABLED ? 'Enabled' : 'Disabled'} (${sipDoorCount} SIP door(s), ${genericDoorCount} generic door(s))`);
 
 // --- PUSH INIT ---
 const VAPID_DIR = '/vapid';

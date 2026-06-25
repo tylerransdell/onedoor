@@ -177,8 +177,6 @@ let ua, session, videoPC, configData;
 let doors = [];
 let currentDoorIndex = 0;
 let currentDoor = null;
-let localStream = null;
-
 let bgPollInterval = null;
 const BG_POLL_INTERVAL = 10000;
 const ACTION_POLL_INTERVAL = 2000;
@@ -212,7 +210,7 @@ function updateVideoFit() {
 }
 
 function unmuteAudio() {
-    if (currentDoor?.call_mode === 'sip') {
+    if (currentDoor?.call_mode === 'sip' || currentDoor?.call_mode === 'generic') {
         $('remoteAudio').play();
     } else {
         $('video').muted = false;
@@ -259,7 +257,7 @@ async function loadMedia(door) {
             v.addEventListener('loadedmetadata', updateVideoFit, { once: true });
             window.addEventListener('resize', updateVideoFit);
 
-            if (door.call_mode === 'none' || door.call_mode === 'generic') {
+            if (door.call_mode === 'none') {
                 v.muted = false;
                 v.play().catch(err => console.warn("Video play pending interaction"));
             } else {
@@ -270,24 +268,9 @@ async function loadMedia(door) {
 
     videoPC.addTransceiver('video', { direction: 'recvonly' });
 
-    if (door.call_mode === 'sip') {
+    if (door.call_mode === 'sip' || door.call_mode === 'generic') {
+        // Audio comes through JsSIP (Asterisk -> go2rtc SIP consumer), not WebRTC
         videoPC.addTransceiver('audio', { direction: 'inactive' });
-    } 
-    else if (door.call_mode === 'generic') {
-        if (!localStream) {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                localStream.getAudioTracks().forEach(t => t.enabled = false);
-            } catch (e) {
-                console.warn("Mic permission denied. Falling back to listen-only.");
-            }
-        }
-        
-        if (localStream) {
-            localStream.getTracks().forEach(track => videoPC.addTrack(track, localStream));
-        } else {
-            videoPC.addTransceiver('audio', { direction: 'recvonly' });
-        }
     } 
     else {
         videoPC.addTransceiver('audio', { direction: 'recvonly' });
@@ -367,36 +350,25 @@ function handleSession() {
 function startCall() {
     if (!currentDoor) return;
 
-    if (currentDoor.call_mode === 'sip') {
-        if (!ua || !ua.isRegistered()) { setStatus("NOT READY"); return; }
+    if (!ua || !ua.isRegistered()) { setStatus("NOT READY"); return; }
         const options = {
             mediaConstraints: { audio: true, video: false },
             pcConfig: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
         };
         ua.call(`sip:${currentDoor.webrtc_extension}@${location.hostname}`, options);
-    } 
-    else if (currentDoor.call_mode === 'generic') {
-        toggleMic(true);
-    }
 }
 
 function hangup() {
-    if (currentDoor?.call_mode === 'sip') {
-        session?.terminate();
-    } else if (currentDoor?.call_mode === 'generic') {
-        toggleMic(false);
+    if (session) {
+        session.terminate();
+        session = null;
     }
-}
-
-function toggleMic(forceState) {
-    if (!localStream) return;
-    const track = localStream.getAudioTracks()[0];
-    if (!track) return;
-
-    const newState = forceState !== undefined ? forceState : !track.enabled;
-    track.enabled = newState;
-    updateCallButton(newState);
-    setStatus(newState ? 'MIC ON' : 'MIC OFF');
+    if (videoPC) {
+        videoPC.close();
+        videoPC = null;
+    }
+    $('remoteAudio').srcObject = null;
+    resetUI();
 }
 
 function updateCallButton(isActive) {

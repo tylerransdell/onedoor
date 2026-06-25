@@ -27,7 +27,7 @@ OneDoor is a single‑container, ultra‑low‑latency door console that unifies
 
 1.2 Cameras (go2rtc)
 
-OneDoor uses a speed-optimized go2rtc build for media routing. Good cameras can produce sub‑second startup on their own but all cameras benefit from v040's preload + GOP cache.
+OneDoor uses a speed-optimized go2rtc build for media routing. Good cameras can produce sub‑second startup on their own but all cameras benefit from OneDoor's video load enhancements.
 
 Recommended brands:
 - Dahua (N45EJ62 is the primary development reference)
@@ -84,7 +84,7 @@ SIP Usernames / Extensions:
 - Door 3 → 107
 - Door 4 → 108
 - Door 5 → 109
-- Door 6 → 110
+- Door 6 → 110 and so on
 
 Button Press → Dial Extensions:
 - Door 1 → 700
@@ -92,12 +92,23 @@ Button Press → Dial Extensions:
 - Door 3 → 704
 - Door 4 → 706
 - Door 5 → 708
-- Door 6 → 710
+- Door 6 → 710 and so on
 
 Notes:
 - Intercoms must auto‑answer calls from their assigned extension.
-- SIP devices must appear within the first 6 doors in config.
-- Door numbering is positional; even if Door 1/2 are non‑SIP, Door 3 is still 107/704.
+- OneDoor is no longer limited to 6x SIP intercoms.
+- Door numbering is no longer broadly positional across all devices. Only increment for SIP devices.
+
+1.4 Generic Intercoms (doorbells, 2-way talk cameras, etc.)
+
+Onedoor generic clients make SIP calls that are bridged into a custom go2rtc build for direct RTP access to go2rtc's plethora of integrations. The limitation is that the send and recv codecs must match. 
+
+Recommended:
+- Dahua, Hikvision — same codec in and out, or configurable codecs (ulaw/alaw/g722/opus)
+- TP-Link D130 — lower quality development reference for generic door mode(alaw each way)
+
+Not recommended:
+- Reolink — Maybe works if you transcode the main audio stream from aac to match the backchannel codec.
 
 ----------------------------------------------------------------------
 <a id="2-deployment"></a>
@@ -137,12 +148,19 @@ On startup, OneDoor initializes Asterisk, provisions SIP endpoints, generates cr
 
 call_mode:
 - sip      — Full SIP signaling completely detached from video (recommended)
-- generic  — No SIP registration; two-way audio sourced from video stream
+- generic  — SIP call to go2rtc SIP consumer; two-way audio via SIP (like intercoms)
 - none     — No mic/call button; frees UI space for more actions
 
 Notes:
-- generic and none both use the video channel for audio (if present).
-- sip provides the best audio quality and multi‑user mic access.
+- sip and generic both use JsSIP for two-way audio (audio is NOT from the video stream).
+- sip and generic doors can be called by an unlimited number of users at the same time. Everyone hears each other.
+- none uses the video channel for audio (if present) — listen only.
+- generic differs from sip only on the back end: Asterisk dials go2rtc for generic instead of an intercom endpoint for SIP.
+
+Advantages
+- SIP devices are audio-first and offer the best experience. Often they are just like talking in person.
+- Generic devices will not yield SIP-like experience but using OneDoor gets you as close as possible to that.
+- Using "none" as call_mode means you get space for more actions and can hear audio (if available) without calling.
 
 ----------------------------------------------------------------------
 <a id="3-notifications"></a>
@@ -196,7 +214,7 @@ iOS users must install OneDoor as a Home Screen app.
 OneDoor implements automatic rate limiting on the webhook endpoint (port 8199) as a security measure. This prevents abuse if the webhook port is accidentally exposed to the internet.
 
 - snooze_all: suppresses all webhook-triggered notifications for a configurable duration after any webhook fires
-- snooze_same: prevents identical webhook payloads from triggering duplicate notifications
+- snooze_same: prevents same-door webhook payloads from triggering duplicate notifications
 
 Configuration (in config.yaml):
 ```yaml
@@ -530,7 +548,7 @@ Best general-purpose option. This gives most or all of the picture to the user a
 Uses all available real estate but will heavily crop images when camera orientation does not match screen orientation.
 
 **`full`**
-Best when the user always wants the full camera image displayed..
+Best when the user always wants the full camera image displayed.
 
 ### Performance Considerations
 
@@ -663,10 +681,14 @@ Versions
   - `dynamic` preserves original auto-detect behavior
   - `zoom` always uses `cover` (fill screen, crop edges)
   - `full` always uses `contain` (show entire frame, letterbox if needed)
-- v046+ (future releases)
+- v050
+  - Major architecture change
+  - Unlimited SIP devices.
+  - No more confusing positional SIP hardware configs.
+  - Generic 2-way cameras treated as first class SIP devices.
+  - Single door legacy config dropped.
+- v055+ (future releases)
   - IPv6 support (At least UDP through NPTv6 networks).
-  - Enable unlimited SIP endpoints by gracefully auto-generating dialplans and modifying parsers.
-  - Explore multi-user audio mixing for generic endpoints (very difficult due to the lack of proper audio hardware on these devices).
 
 ----------------------------------------------------------------------
 <a id="10-contributions"></a>

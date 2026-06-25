@@ -5,30 +5,19 @@ ARG PYTHON_VERSION="3.13"
 ARG GO_VERSION="1.25"
 
 # ==============================================================================
-# 1. Build Layered Custom go2rtc v1.9.12 Binary with PR 1887
+# 1. Build Custom go2sip from combo branch (SIP consumer + GOP keyframe cache)
 # ==============================================================================
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build
-ARG TARGETPLATFORM
-ARG TARGETOS
-ARG TARGETARCH
-
-ENV GOOS=${TARGETOS}
-ENV GOARCH=${TARGETARCH}
+FROM golang:${GO_VERSION}-alpine AS build
 
 WORKDIR /build
 
-# Install git to grab the codebase and pull the keyframe patch
 RUN apk add --no-cache git
 
-# Clone the baseline repo cleanly
-RUN git clone https://github.com/AlexxIT/go2rtc .
+# Clone the combo fork with SIP consumer support
+RUN git clone --no-checkout https://github.com/tylerransdell/go2sip .
 
-# Checkout the tag and branch off to safely merge PRs without head detachment
-RUN git checkout tags/v1.9.12 -b v1.9.12-lowlatency
-
-# Fetch and merge PR 1887 (Instant GOP / Keyframe Buffer)
-RUN git fetch origin pull/1887/head:pr1887 && \
-    git merge pr1887
+# Fetch and checkout the combo branch
+RUN git fetch origin combo && git checkout combo
 
 # Download go modules utilizing native Docker build cache
 RUN --mount=type=cache,target=/root/.cache/go-build go mod download
@@ -76,7 +65,9 @@ COPY . .
 RUN chmod +x /app/keys.sh /app/entrypoint.sh /app/doorbell-webhook.sh
 
 # Expose required signaling and stream standard matrix entry points
-EXPOSE 1984 8554 8555 8555/udp
+# NOTE: go2rtc WebRTC port is 8557 (not default 8555) to avoid conflicts with
+# Frigate or other go2rtc instances users may run on the same machine.
+EXPOSE 1984 8557 8557/udp
 
 VOLUME /config
 
