@@ -687,7 +687,10 @@ Versions
   - No more confusing positional SIP hardware configs.
   - Generic 2-way cameras treated as first class SIP devices.
   - Single door legacy config dropped.
-- v055+ (future releases)
+- v051+ 
+  - v050 clean up pass(es) - get rid of all generic reference on front end.
+- v053+
+  - Optional Frigate NVR notifier to get thumbnail alerts directly to OneDoor. No more slow Home Assistant churn. AI-friendly.
   - IPv6 support (At least UDP through NPTv6 networks).
 
 ----------------------------------------------------------------------
