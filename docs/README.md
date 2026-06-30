@@ -101,14 +101,14 @@ Notes:
 
 1.4 Generic Intercoms (doorbells, 2-way talk cameras, etc.)
 
-Onedoor generic clients make SIP calls that are bridged into a custom go2rtc build for direct RTP access to go2rtc's plethora of integrations. The limitation is that the send and recv codecs must match. 
+Onedoor generic clients make SIP calls that are bridged into a custom go2rtc build for direct RTP access to go2rtc's plethora of integrations.
 
 Recommended:
 - Dahua, Hikvision — same codec in and out, or configurable codecs (ulaw/alaw/g722/opus)
-- TP-Link D130 — lower quality development reference for generic door mode(alaw each way)
+- TP-Link D130 — generic development reference for generic door mode(alaw each way)
 
 Not recommended:
-- Reolink — Maybe works if you transcode the main audio stream from aac to match the backchannel codec.
+- Reolink — Works only if you transcode the main audio stream from aac to match its backchannel codec. This can be done directly on the camera: line following go2rtc docs.
 
 ----------------------------------------------------------------------
 <a id="2-deployment"></a>
@@ -147,8 +147,8 @@ On startup, OneDoor initializes Asterisk, provisions SIP endpoints, generates cr
 2.6 Call Modes (v040+)
 
 call_mode:
-- sip      — Full SIP signaling completely detached from video (recommended)
-- generic  — SIP call to go2rtc SIP consumer; two-way audio via SIP (like intercoms)
+- sip      — Full SIP signaling completely detached from video
+- generic  — Same front end as SIP but ends up custom go2rtc integration instead of intercom
 - none     — No mic/call button; frees UI space for more actions
 
 Notes:
@@ -159,7 +159,7 @@ Notes:
 
 Advantages
 - SIP devices are audio-first and offer the best experience. Often they are just like talking in person.
-- Generic devices will not yield SIP-like experience but using OneDoor gets you as close as possible to that.
+- Generic: OneDoor turns budget or afterthought features like 2-way talk into SIP-like experiences.
 - Using "none" as call_mode means you get space for more actions and can hear audio (if available) without calling.
 
 ----------------------------------------------------------------------
@@ -688,8 +688,9 @@ Versions
   - Generic 2-way cameras treated as first class SIP devices.
   - Single door legacy config dropped.
 - v051+ 
-  - v050 clean up pass(es) - get rid of all generic reference on front end.
-- v053+
+  - clean up pass(es) - get rid of all generic reference on front end.
+  - bring in upstream improvements to go2sip
+- v054+
   - Optional Frigate NVR notifier to get thumbnail alerts directly to OneDoor. No more slow Home Assistant churn. AI-friendly.
   - IPv6 support (At least UDP through NPTv6 networks).
 

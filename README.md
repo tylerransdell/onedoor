@@ -6,23 +6,9 @@ OneDoor captures the critical seconds that matter, giving you the instant abilit
 
 ## What is OneDoor?
 
-Originally a hyper-focused, SIP-first PWA for a single door, OneDoor has evolved into a multi-door communication and control surface, benefiting even non-SIP devices.
+Originally a hyper-focused, SIP-first PWA for a single door, OneDoor has evolved into a multi-door communication and control surface, benefiting even non-SIP devices. 
 
-OneDoor is primarily a Node server built around a modified go2rtc build and a lightweight Asterisk build using Alpine Linux. 
-
-It combines:
-- Optimizations for:
-  - Unprivileged container deployment
-  - Secure bridge networking
-  - Complex NAT traversal
-  - Low latency and load times
-- Authentication
-- Secure media routing
-- Key and secret generation
-- Notifications (built-in and custom)
-- Actions (DTMF, state-aware toggles, webhooks, and links)
-- Configurable CSS
-- Server-side SIP configuration
+OneDoor's technology makes a $40 Tapo doorbell load like a custom-tuned Axis camera and talk like an SIP intercom. 
 
 While designed primarily as a **mobile notification target**, it also functions well as:
 - **A desktop widget** for quick visual confirmation and controlled access.
@@ -33,14 +19,21 @@ Everyone
 - OneDoor is the fastest way to get to your door.
 - Get your important, real-time actions right at your fingertips.
 
+iPhone users
+- OneDoor's technology shatters WebKit's high-latency grip on WebRTC communications.
+- The same methods help Chromium too.
+- OneDoor is 100% self-auditable unlike App Store binaries.
+
 SIP and pro camera users:
-- No need to set up PBX, just configure your devices.
-- Integrate to actions and non-SIP devices on one surface.
+- No need to set up a PBX, just configure your devices.
+- Integrate to actions and your non-SIP devices on one surface without losing SIP advantages.
+- Turn 2-way RTSP/ONVIF cameras into SIP-like communication devices.
 
 Retail camera users:
-- Preload and GOP cache significantly reduce load times.
+- Preload and GOP cache features significantly reduce load times.
 - Access to your doorbell is faster than any other app.
 - Give doorbells and 2-way cameras features like multi-caller conferencing that don't exist elsewhere.
+- Turn walkie-talkie like audio into telephone speed.
 
 ---
 
@@ -81,7 +74,7 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 - **Multi‑door support** — Add as many doors/cameras as you want and swipe between them instantly.
 - **Multiple audio modes** —
   - `sip` for the best pure UDP experience
-  - `generic` for most doorbells and cameras that can integrate to go2rtc
+  - `generic` transform generic doorbells and 2-way cameras into SIP endpoints
   - `none` for video‑channel audio without 2‑way talk
 - **Per‑door action sets** — Configurable DTMF payloads, private backend webhooks, frontend links, and state‑aware toggle actions for locks, lights, and automations.
 - **Deep‑linked notifications** — Alerts take you directly to the door that was pressed.
@@ -101,7 +94,7 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 
 ## ⚡ Quick Start
 
-OneDoor docs are optimized with examples for quick deployment using free tier AI agents. Deepseek v4 flash via Cline agent can configure an extensive 40-action OneDoor config in under 5 minutes for about $0.06 with varaibles for tokens and secrets referencing /docs/README.md.
+OneDoor is optimized and documented for setup using AI agents. Deepseek v4 Flash via Cline agent can configure an extensive 40-action OneDoor config in under 5 minutes for about $0.06 by referencing /docs/README.md.
 
 Manually:
 1. Copy `docker-compose.yml` and `config.yaml`. Use `makepass.example` to generate your password hash.
@@ -130,6 +123,6 @@ moredoors:
 ---
 
 ## ❤️ Why OneDoor Exists
-OneDoor started with one goal: take back the seconds that matter by building around the hardware best suited for the task. It naturally evolved to support related hardware in the best ways possible.
+OneDoor started by building around the hardware best suited for real time. OneDoor developement has evolved from building around the tools available to modifying those tools to meet rigid performance goals.
 
 OneDoor exists to put you directly inside the critical seconds where hospitality, communication, and safety actually happen.
