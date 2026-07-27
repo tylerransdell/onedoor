@@ -7,6 +7,7 @@ OneDoor is a single‑container, ultra‑low‑latency door console that unifies
 - [1. Recommended Hardware](#1-recommended-hardware)
 - [2. Deployment](#2-deployment)
 - [3. Notifications](#3-notifications)
+  - [3.6 Docker Host Chime Relay](#36-docker-host-chime-relay)
 - [4. Actions](#4-actions)
 - [5. Video Fit Configuration](#5-video-fit-configuration-v045)
 - [6. Keyboard Shortcuts](#6-keyboard-shortcuts-dashboard-mode)
@@ -229,6 +230,61 @@ Notes:
 - snooze_all applies globally across all doors
 - snooze_same is per-payload (prevents duplicate alerts from the same event)
 - Setting either value to 0 disables that rate limit
+
+----------------------------------------------------------------------
+<a id="36-docker-host-chime-relay"></a>
+3.6 Docker Host Chime Relay
+
+When a SIP intercom presses its doorbell button, Asterisk fires `doorbell-webhook.sh` which posts to the local OneDoor backend on port 8199 and also sends an identical `POST /webhook` with `{"extension":<ext>}` to `http://<docker_host>:8799/webhook` — fire-and-forget, no response expected.
+
+This lets you run a lightweight listener on your Docker host to trigger a chime, HA automation, or any LAN device without AMI access.
+
+### Example listener (Python + Home Assistant)
+
+```python
+#!/usr/bin/env python3
+"""Listener for OneDoor docker_host webhook on port 8799.
+Presses a Home Assistant momentary button per doorbell press."""
+import json
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+HA_TOKEN = "your_long_lived_token"
+HA_URL = "http://homeassistant.local:8123"
+
+# Map doorbell extensions to HA button entity_ids
+DOOR_MAP = {
+    "700": "button.front_doorbell",
+    "702": "button.side_doorbell",
+    "704": "button.garage_doorbell",
+}
+
+class WebhookHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length))
+        ext = body.get("extension", "")
+        entity = DOOR_MAP.get(str(ext))
+
+        if entity:
+            import urllib.request
+            req = urllib.request.Request(
+                f"{HA_URL}/api/services/button/press",
+                data=json.dumps({"entity_id": entity}).encode(),
+                headers={
+                    "Authorization": f"Bearer {HA_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            urllib.request.urlopen(req, timeout=5)
+
+        self.send_response(200)
+        self.end_headers()
+
+HTTPServer(("0.0.0.0", 8799), WebhookHandler).serve_forever()
+```
+
+Save this on your Docker host (e.g., `doorbell-listener.py`), make it executable, and run it as a daemon. The `extension` field maps to the doorbell extension dialed by the intercom.
 
 ----------------------------------------------------------------------
 <a id="4-actions"></a>
@@ -687,11 +743,12 @@ Versions
   - No more confusing positional SIP hardware configs.
   - Generic 2-way cameras treated as first class SIP devices.
   - Single door legacy config dropped.
-- v051+ 
-  - clean up pass(es) - get rid of all generic reference on front end.
-  - bring in upstream improvements to go2sip
-- v054+
-  - Optional Frigate NVR notifier to get thumbnail alerts directly to OneDoor. No more slow Home Assistant churn. AI-friendly.
+- v051 
+  - bring in upstream improvements go2sip
+- v052+
+  - ✓ Clean up css for landscape view
+  - ✓ Add universal external notifier to intercom button press logic (Docker Host Chime Relay, port 8799)
+  - Optional Frigate NVR notifier to get thumbnail alerts directly to OneDoor. No more slow Home Assistant churn.
   - IPv6 support (At least UDP through NPTv6 networks).
 
 ----------------------------------------------------------------------

@@ -38,7 +38,7 @@
         #door-title {
             position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
-            font-size: 14px; font-weight: 600; z-index: 50; pointer-events: none;
+            font-size: 14px; font-weight: 600; z-index: 1001; pointer-events: none;
             text-transform: capitalize; white-space: nowrap;
         }
 
@@ -47,7 +47,7 @@
             background: rgba(0,0,0,0.5); color: #fff; font-size: 24px;
             width: 40px; height: 80px; display: none;
             align-items: center; justify-content: center;
-            cursor: pointer; z-index: 50; border-radius: 8px;
+            cursor: pointer; z-index: 1001; border-radius: 8px;
             user-select: none;
         }
         #nav-left { left: 10px; }
@@ -100,9 +100,9 @@
                 justify-content: center;
             }
             #controls button {
-                width: 137.5%;
+                width: 110%;
                 height: 48px;
-                margin-left: -18.75%;
+                margin-left: -5%;
                 flex: none;
             }
         }
@@ -139,7 +139,7 @@
         form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
         input { width: 100%; padding: 16px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; outline: none; }
         .hidden { display: none !important; }
-        #status { position: absolute; top: 40px; left: 12px; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 4px; z-index: 50; letter-spacing: 0.05em; }
+        #status { position: absolute; top: 40px; left: 12px; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 4px; z-index: 1001; letter-spacing: 0.05em; }
     </style>
 </head>
 <body>
