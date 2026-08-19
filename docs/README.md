@@ -7,7 +7,6 @@ OneDoor is a single‑container, ultra‑low‑latency door console that unifies
 - [1. Recommended Hardware](#1-recommended-hardware)
 - [2. Deployment](#2-deployment)
 - [3. Notifications](#3-notifications)
-  - [3.6 Docker Host Chime Relay](#36-docker-host-chime-relay)
 - [4. Actions](#4-actions)
 - [5. Video Fit Configuration](#5-video-fit-configuration-v045)
 - [6. Keyboard Shortcuts](#6-keyboard-shortcuts-dashboard-mode)
@@ -48,11 +47,7 @@ Suggested sub‑stream profile:
 Enable gop=1 for fastest startup and swipes:
 ```
 camera:
-  - "ffmpeg:rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#gop=1"
-```
-Use backend UDP for closest-to-real-time video:
-```
-camera: "rtsp://admin:password@192.168.1.10:554/cam/realmonitor?channel=1&subtype=1#rtsp_transport=udp#gop=1"
+  - "rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=2#gop=1"
 ```
 
 1.3 SIP Intercoms
