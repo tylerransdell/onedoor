@@ -109,7 +109,7 @@ Not recommended:
 
 Dahua 2‑way talk (camera with a speaker)
 
-OneDoor now supports a native `dahua://` backchannel for two‑way talk on Dahua cameras — no ffmpeg, no transcoding (the `dahua://` source speaks the raw TCP/37777 talk protocol directly).
+OneDoor now supports a native `dahua://` backchannel for two‑way talk on Dahua cameras — no ffmpeg, no transcoding (the `dahua://` source speaks the raw TCP/37777 talk protocol directly). This requires enabling **Private Protocol: Compatibility Mode** on the camera — that setting is what exposes the TCP/37777 talk channel.
 ```
 camera:
   - "rtsp://admin:password@192.168.1.15:554/cam/realmonitor?channel=1&subtype=1#gop=1#backchannel=0"
