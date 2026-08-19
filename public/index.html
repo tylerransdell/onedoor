@@ -59,7 +59,7 @@
 
         #controls {
             display: none;
-            position: fixed;
+            position: absolute;
             z-index: 1000;
             background: var(--panel);
             gap: 10px;
@@ -240,6 +240,15 @@ $('video-container').addEventListener('touchend', e => {
         if (diff > 0) nextDoor(); else prevDoor();
     }
 }, { passive: true });
+// Registered once (not per ontrack) so reconnects/door switches don't stack handlers.
+// Debounced: iOS Safari fires many resize events while rotating; recomputing
+// objectFit on each transient frame makes dynamic fit flip cover/contain -> jitter.
+// Compute once after the resize burst settles with final dimensions instead.
+let fitTimer = 0;
+window.addEventListener('resize', () => {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(updateVideoFit, 120);
+});
 
 async function loadMedia(door) {
     if (videoPC) videoPC.close();
@@ -255,7 +264,6 @@ async function loadMedia(door) {
             const v = $('video');
             v.srcObject = e.streams[0];
             v.addEventListener('loadedmetadata', updateVideoFit, { once: true });
-            window.addEventListener('resize', updateVideoFit);
 
             if (door.call_mode === 'none') {
                 v.muted = false;
@@ -363,10 +371,9 @@ function hangup() {
         session.terminate();
         session = null;
     }
-    if (videoPC) {
-        videoPC.close();
-        videoPC = null;
-    }
+    // Audio only: leave the video WebRTC connection (videoPC) untouched so the
+    // door-camera <video> keeps playing. Video and audio are separate streams;
+    // ending the call must not tear down the video.
     $('remoteAudio').srcObject = null;
     resetUI();
 }

@@ -1,12 +1,66 @@
-const CACHE_NAME = 'onedoor-v3';
+// Bumped v3 -> v4: actually populate the cache. Static assets are served
+// cache-first (fast repeat loads), the HTML page is network-first (keeps the
+// latest app/config). Same strategy as before for /api, /go2rtc, /ws (bypassed).
+const CACHE_NAME = 'onedoor-v4';
+const PRECACHE = [
+    '/',
+    '/index.html',
+    '/manifest.json',
+    '/jssip.min.js'
+];
 
-self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('install', e => {
+    e.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(c => c.addAll(PRECACHE.map(url => new Request(url, { cache: 'no-cache' }))))
+            .then(() => self.skipWaiting())
+    );
+});
+
+self.addEventListener('activate', e => {
+    e.waitUntil(
+        caches.keys()
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+            .then(() => self.clients.claim())
+    );
+});
 
 self.addEventListener('fetch', e => {
+    if (e.request.method !== 'GET') return;
+
     const u = new URL(e.request.url);
     if (u.pathname.startsWith('/api') || u.pathname.startsWith('/go2rtc') || u.pathname.startsWith('/ws')) return;
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+
+    const isHTML = e.request.mode === 'navigate' || /\.html?$/.test(u.pathname);
+
+    if (isHTML) {
+        // Network-first for the page so the latest app/config is used.
+        e.respondWith(
+            fetch(e.request)
+                .then(res => {
+                    if (res.ok) {
+                        const cacheKey = u.pathname === '/' ? '/index.html' : e.request;
+                        caches.open(CACHE_NAME).then(c => c.put(cacheKey, res.clone()));
+                    }
+                    return res;
+                })
+                .catch(() =>
+                    caches.match(e.request).then(m => m || caches.match('/index.html'))
+                )
+        );
+        return;
+    }
+
+    // Cache-first for static assets: fast repeat loads, works offline.
+    e.respondWith(
+        caches.match(e.request).then(cached => {
+            if (cached) return cached;
+            return fetch(e.request).then(res => {
+                if (res.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
+                return res;
+            });
+        })
+    );
 });
 
 self.addEventListener('push', e => {
