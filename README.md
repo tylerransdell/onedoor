@@ -28,6 +28,7 @@ SIP and pro camera users:
 - No need to set up a PBX, just configure your devices.
 - Integrate to actions and your non-SIP devices on one surface without losing SIP advantages.
 - Turn 2-way RTSP/ONVIF cameras into SIP-like communication devices.
+- Enjoy private protocol talkback for Dahua cameras.
 
 Retail camera users:
 - Preload and GOP cache features significantly reduce load times.
@@ -123,6 +124,15 @@ moredoors:
 ---
 
 ## ❤️ Why OneDoor Exists
-OneDoor started by building around the hardware best suited for real time. OneDoor developement has evolved from building around the tools available to modifying those tools to meet rigid performance goals.
-
 OneDoor exists to put you directly inside the critical seconds where hospitality, communication, and safety actually happen.
+
+
+## Special Thanks
+Onedoor relies on SOTA open source tech from a number of projects. Notably:
+- Asterisk
+- alexxit/go2rtc
+- seydx/go2rtc
+- stream-z/go2rtc
+- Node
+- Alpine Linux
+
