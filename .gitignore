@@ -3,3 +3,5 @@
 docker-compose.yml
 config.yaml
 *.test
+*.so
+

@@ -106,6 +106,18 @@ Recommended:
 Not recommended:
 - Reolink — Works only if you transcode the main audio stream from aac to match its backchannel codec. This can be done directly on the camera: line following go2rtc docs.
 
+
+Dahua 2‑way talk (camera with a speaker)
+
+OneDoor now supports a native `dahua://` backchannel for two‑way talk on Dahua cameras — no ffmpeg, no transcoding (the `dahua://` source speaks the raw TCP/37777 talk protocol directly).
+```
+camera:
+  - "rtsp://admin:password@192.168.1.15:554/cam/realmonitor?channel=1&subtype=1#gop=1#backchannel=0"
+  - "dahua://admin:password@192.168.1.15?backchannel=2"
+```
+Using an audio channel that isn't wired into anything else (e.g. `backchannel=2`) is more reliable than channel 0.
+
+
 ----------------------------------------------------------------------
 <a id="2-deployment"></a>
 2. Deployment
