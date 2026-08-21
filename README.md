@@ -93,6 +93,51 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 
 ---
 
+## 🔀 App Flow
+
+```mermaid
+flowchart TD
+    %% Styling
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef backend fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef media fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef hardware fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef camera fill:#eceff1,stroke:#37474f,stroke-width:2px;
+
+    %% Components
+    subgraph Client ["OneDoor Client (PWA)"]
+        PWA["PWA Interface"]:::client
+    end
+
+    subgraph Backend ["Backend & Media Services"]
+        Node["Node Server"]:::backend
+        Asterisk["Asterisk / ConfBridge"]:::media
+        Go2RTC["custom go2rtc"]:::media
+    end
+
+    subgraph Intercom ["Hardware"]
+        DoorStation["Intercom / Door Station"]:::hardware
+    end
+
+    subgraph Cameras ["Perimeter"]
+        CamSys["Cameras (Multiple Integrations)"]:::camera
+    end
+
+    %% PWA Connections
+    PWA <-->|"1. JS / Signaling"| Node
+    Go2RTC -->|"2. WebRTC Video (Audio only if call_mode=none)"| PWA
+    PWA <-->|"3. SIP (Audio To & From)"| Asterisk
+
+    %% Backend/Asterisk Connections
+    Asterisk <-->|"go2sip"| Go2RTC
+    Asterisk <-->|"SIP (To & From)"| DoorStation
+
+    %% Camera Connections
+    Go2RTC <-->|"Multiple Integrations (Both Ways)"| CamSys
+```
+
+---
+
 ## ⚡ Quick Start
 
 OneDoor is optimized and documented for setup using AI agents. Deepseek v4 Flash via Cline agent can configure an extensive 40-action OneDoor config in under 5 minutes for about $0.06 by referencing /docs/README.md.
@@ -126,6 +171,7 @@ moredoors:
 ## ❤️ Why OneDoor Exists
 OneDoor exists to put you directly inside the critical seconds where hospitality, communication, and safety actually happen.
 
+---
 
 ## Special Thanks
 Onedoor relies on SOTA open source tech from a number of projects. Notably:
