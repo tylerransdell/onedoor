@@ -16,7 +16,7 @@ While designed primarily as a **mobile notification target**, it also functions 
 
 ## Why use OneDoor?
 Everyone
-- OneDoor is the fastest way to get to your door.
+- OneDoor is the fastest way to get to your door. Nothing else is close.
 - Get your important, real-time actions right at your fingertips.
 
 iPhone users
@@ -97,12 +97,12 @@ https://github.com/user-attachments/assets/e144d909-67e6-4505-a220-b46c3598fe59
 
 ```mermaid
 flowchart TD
-    %% Styling
-    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef backend fill:#fff3e0,stroke:#e65100,stroke-width:2px;
-    classDef media fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef hardware fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    classDef camera fill:#eceff1,stroke:#37474f,stroke-width:2px;
+    %% Styling with explicit high-contrast text colors
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
+    classDef backend fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000;
+    classDef media fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000;
+    classDef hardware fill:#4a148c,stroke:#ab47bc,stroke-width:2px,color:#fff;
+    classDef camera fill:#37474f,stroke:#90a4ae,stroke-width:2px,color:#fff;
 
     %% Components
     subgraph Client ["OneDoor Client (PWA)"]
@@ -112,7 +112,7 @@ flowchart TD
     subgraph Backend ["Backend & Media Services"]
         Node["Node Server"]:::backend
         Asterisk["Asterisk / ConfBridge"]:::media
-        Go2RTC["Custom go2rtc"]:::media
+        Go2RTC["custom go2rtc"]:::media
     end
 
     subgraph Intercom ["Hardware"]
@@ -167,7 +167,7 @@ onedoor:
 moredoors:
   - id: #"front"
     call_mode: #"sip" - sip, generic, or none.
-    camera: #"rtsp://admin:password@192.168.1.10:554/cam/realmonitor?channel=1&subtype=1#rtsp_transport=udp#gop=1" string or list
+    camera: #"rtsp://admin:password@192.168.1.10:554/cam/realmonitor?channel=1&subtype=1#gop=1" string or list
 ```
 
 ---
