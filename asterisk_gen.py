@@ -122,7 +122,7 @@ def generate_pjsip(users, domain, docker_host, public_ip, all_doors=None, sip_do
         pjsip += f"contact_user={public_ip}\n"
         pjsip += f"media_address={public_ip}\n\n"
 
-    with open(f"{ASTERISK_DIR}/pjsip.conf", "w") as f:
+    with open(os.path.join(ASTERISK_DIR, "pjsip.conf"), "w") as f:
         f.write(pjsip)
 
 
@@ -220,5 +220,5 @@ def generate_extensions(sip_doors, generic_doors):
             extensions += f" same => n,ConfBridge({room},default_bridge,app_user)\n"
             extensions += f" same => n,Hangup()\n"
 
-    with open(f"{ASTERISK_DIR}/extensions.conf", "w") as f:
+    with open(os.path.join(ASTERISK_DIR, "extensions.conf"), "w") as f:
         f.write(extensions)
