@@ -112,7 +112,7 @@ flowchart TD
     subgraph Backend ["Backend & Media Services"]
         Node["Node Server"]:::backend
         Asterisk["Asterisk / ConfBridge"]:::media
-        Go2RTC["custom go2rtc"]:::media
+        Go2RTC["Custom go2rtc"]:::media
     end
 
     subgraph Intercom ["Hardware"]
@@ -126,9 +126,13 @@ flowchart TD
     %% PWA Connections
     PWA <-->|"1. JS / Signaling"| Node
     Go2RTC -->|"2. WebRTC Video (Audio only if call_mode=none)"| PWA
-    PWA <-->|"3. SIP (Audio To & From)"| Asterisk
+    PWA <-->|"3. DTLS/SRTP (Audio To & From)"| Asterisk
 
-    %% Backend/Asterisk Connections
+    %% Signaling (Node to Media Services)
+    Node <-->|"SIP Signaling"| Asterisk
+    Node <-->|"Signaling"| Go2RTC
+
+    %% Media / Backend Connections
     Asterisk <-->|"go2sip"| Go2RTC
     Asterisk <-->|"SIP (To & From)"| DoorStation
 
